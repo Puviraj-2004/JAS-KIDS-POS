@@ -1,0 +1,196 @@
+.card {
+  display: grid;
+  gap: 18px;
+  padding: clamp(18px, 3vw, 26px);
+  border: 1px solid var(--pos-border);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.headingRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconTile {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--pos-primary);
+  background: #e7f7f0;
+}
+
+.title {
+  margin: 0;
+  color: var(--pos-text);
+  font-size: clamp(1.1rem, 2vw, 1.3rem);
+  line-height: 1.25;
+}
+
+.subtitle,
+.privacyNote {
+  margin: 4px 0 0;
+  color: var(--pos-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.cameraFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: min(58vh, 520px);
+  overflow: hidden;
+  border: 1px solid var(--pos-border);
+  border-radius: 8px;
+  background: var(--pos-text);
+}
+
+.cameraFrame[data-active="true"] {
+  border-color: #18a875;
+  box-shadow: 0 0 0 3px rgba(24, 168, 117, 0.15);
+}
+
+.reader,
+.reader > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.cameraPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: #dbece5;
+  background: var(--pos-bg);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.scanGuide {
+  pointer-events: none;
+  position: absolute;
+  inset: 14%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 0 0 999px rgba(6, 22, 17, 0.28);
+}
+
+.scanGuide::after {
+  content: "";
+  position: absolute;
+  right: 9%;
+  left: 9%;
+  top: 50%;
+  height: 2px;
+  background: #49e4ad;
+  box-shadow: 0 0 14px rgba(73, 228, 173, 0.95);
+  animation: scan 1.8s ease-in-out infinite alternate;
+}
+
+.actions {
+  display: grid;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: 8px;
+  padding: 0 18px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 1px solid var(--pos-primary);
+  color: #ffffff;
+  background: var(--pos-primary);
+}
+
+.secondaryButton {
+  border: 1px solid var(--pos-border);
+  color: var(--pos-text);
+  background: #f7faf8;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible {
+  outline: 3px solid rgba(0, 103, 71, 0.25);
+  outline-offset: 3px;
+}
+
+.error {
+  margin: 0;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 11px 13px;
+  color: #991b1b;
+  background: #fff1f2;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@keyframes scan {
+  from { transform: translateY(-90px); }
+  to { transform: translateY(90px); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanGuide::after,
+  .spinner {
+    animation: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .card { border-radius: 8px; }
+  .cameraFrame { border-radius: 8px; }
+}
+.card { padding: 18px; gap: 14px; }
+.iconTile { width: 36px; height: 36px; flex-basis: 36px; background: transparent; }
+.title { font-size: 16px; }
+.cameraFrame { aspect-ratio: 4 / 3; max-height: 340px; }
+.cameraPlaceholder { background: #20282f; }
+.privacyNote { font-size: 12px; }

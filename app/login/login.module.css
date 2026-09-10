@@ -1,0 +1,10 @@
+.page{display:grid;min-height: calc(100dvh - 68px);place-items:center;padding:22px;color:var(--pos-text);background: var(--pos-bg);font-family: var(--pos-font)}.panel{width:min(440px,100%);overflow:hidden;border:1px solid var(--pos-border);border-radius: 8px;background:#fff;box-shadow: none}.brand{display:grid;justify-items:center;gap:7px;padding:28px 28px 20px;background: var(--pos-surface);height:auto}.brand span{color:var(--pos-primary);font-size:.72rem;font-weight: 600;letter-spacing:.18em}.copy{padding:16px 28px 0}.copy p{margin:0 0 6px;color:var(--pos-primary);font-size:.7rem;font-weight: 600;letter-spacing:.12em}.copy h1{margin:0 0 5px;font-size:1.75rem;letter-spacing:-.03em}.copy span{color:var(--pos-muted);font-size:.9rem}.panel form{display:grid;gap:15px;padding:22px 28px 30px}.panel form label{display:grid;gap:7px;color:#294d40;font-size:.83rem;font-weight: 600}.panel form input{width:100%;min-height:48px;border:1px solid var(--pos-border);border-radius: 8px;padding:0 12px;color:var(--pos-text);background:#fff;font-size:1rem}.panel form button{min-height:49px;margin-top:3px;border:0;border-radius: 8px;color:#fff;background:var(--pos-primary);cursor:pointer;font-weight: 600}.panel form button:hover{background:#00543a}.panel form button:disabled{cursor:not-allowed;opacity:.6}.error{margin:0;border-radius: 8px;padding:11px 12px;color:#991b1b;background:#fff1f2;font-size:.85rem;line-height:1.45}.panel form input:focus-visible,.panel form button:focus-visible{outline:3px solid rgba(0,103,71,.24);outline-offset:2px}@media(max-width:480px){.page{padding:12px}.panel{border-radius: 8px}.brand{padding:24px 20px 16px}.copy{padding:14px 20px 0}.panel form{padding:20px}}
+.page { min-height: 100dvh; }
+.panel { max-width: 400px; border-radius: 12px; }
+.brand { justify-items: start; padding: 28px 28px 0; background: #fff; }
+.brand img { display: block; width: 240px; max-width: 100%; height: auto; object-fit: contain; }
+.brand span { font-size: 11px; color: var(--pos-muted); letter-spacing: .08em; }
+.copy { padding-top: 28px; }
+.copy p { display: none; }
+.copy h1 { font-size: 24px; }
+.panel form input { border-radius: 6px; }
