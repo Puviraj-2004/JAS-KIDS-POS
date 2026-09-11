@@ -25,7 +25,7 @@ function today() {
 }
 
 export default async function BookingsPage({ searchParams }: { searchParams: { q?: string; type?: string; state?: string; branch_id?: string } }) {
-  const staff = await getCurrentStaff(new Request("http://localhost", { headers: headers() }));
+  const staff = await getCurrentStaff(new Request("http://localhost", { headers: await headers() }));
   if (!staff) redirect("/login");
   const q = searchParams.q?.trim() ?? "";
   const isSuperAdmin = staff.role === Role.SUPER_ADMIN;

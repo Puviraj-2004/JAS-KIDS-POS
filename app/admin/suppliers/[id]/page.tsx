@@ -8,14 +8,15 @@ import styles from "../../admin.module.css";
 
 const stockCategories = [ItemCategory.CAFE_ITEM, ItemCategory.BIRTHDAY_ITEM, ItemCategory.OTHER_ITEM];
 
-export default async function SupplierAccountPage({ params }: { params: { id: string } }) {
-  const staff = await getCurrentStaff(new Request("http://localhost", { headers: headers() }));
+export default async function SupplierAccountPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const staff = await getCurrentStaff(new Request("http://localhost", { headers: await headers() }));
   if (!staff) redirect("/login");
   if (staff.role !== Role.SUPER_ADMIN && staff.role !== Role.BRANCH_ADMIN) redirect("/pos/dashboard");
   if (staff.role === Role.BRANCH_ADMIN && !staff.branch_id) redirect("/admin");
 
   const supplier = await prisma.supplier.findFirst({
-    where: { id: params.id, is_active: true, ...(staff.role === Role.BRANCH_ADMIN ? { branch_id: staff.branch_id! } : {}) },
+    where: { id, is_active: true, ...(staff.role === Role.BRANCH_ADMIN ? { branch_id: staff.branch_id! } : {}) },
     include: { branch: { select: { id: true, name: true } } },
   });
   if (!supplier) notFound();

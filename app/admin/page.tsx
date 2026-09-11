@@ -7,7 +7,7 @@ import { getCurrentStaff } from "@/lib/auth";
 import styles from "./admin.module.css";
 
 export default async function AdminPage() {
-  const staff = await getCurrentStaff(new Request("http://localhost", { headers: headers() }));
+  const staff = await getCurrentStaff(new Request("http://localhost", { headers: await headers() }));
   if (!staff) redirect("/login");
   if (staff.role !== Role.SUPER_ADMIN && staff.role !== Role.BRANCH_ADMIN) redirect("/pos/dashboard");
   const isSuperAdmin = staff.role === Role.SUPER_ADMIN;

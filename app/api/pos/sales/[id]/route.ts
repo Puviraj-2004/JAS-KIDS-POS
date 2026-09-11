@@ -19,19 +19,21 @@ async function findPermittedSale(id: string, staff: Awaited<ReturnType<typeof ge
   });
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const staff = await getCurrentStaff(request);
   if (!staff) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const sale = await findPermittedSale(params.id, staff);
+  const { id } = await params;
+  const sale = await findPermittedSale(id, staff);
   if (!sale) return NextResponse.json({ error: "Sale not found" }, { status: 404 });
   return NextResponse.json({ success: true, viewer_role: staff.role, can_cancel: canCancelSale(staff), sale });
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const staff = await getCurrentStaff(request);
   if (!staff) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await request.json().catch(() => null);
-  const sale = await findPermittedSale(params.id, staff);
+  const { id } = await params;
+  const sale = await findPermittedSale(id, staff);
   if (!sale) return NextResponse.json({ error: "Sale not found" }, { status: 404 });
 
   if (body?.action === "mark_printed") {

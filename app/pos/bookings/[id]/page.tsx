@@ -23,10 +23,11 @@ const bookingTypeLabel = (value: string) => {
 };
 type BookingItemRow = { id: string; item_name: string; quantity: string; unit_price: string; line_total: string };
 
-export default async function BookingPage({ params }: { params: { id: string } }) {
-  const staff = await getCurrentStaff(new Request("http://localhost", { headers: headers() }));
+export default async function BookingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const staff = await getCurrentStaff(new Request("http://localhost", { headers: await headers() }));
   if (!staff) redirect("/login");
-  const booking = await prisma.booking.findFirst({ where: { id: params.id, ...(staff.branch_id ? { branch_id: staff.branch_id } : {}) }, include: { branch: true, children: { orderBy: { position: "asc" } }, checkin: { include: { staff: true, transaction: { include: { receipt: true } } } } } });
+  const booking = await prisma.booking.findFirst({ where: { id, ...(staff.branch_id ? { branch_id: staff.branch_id } : {}) }, include: { branch: true, children: { orderBy: { position: "asc" } }, checkin: { include: { staff: true, transaction: { include: { receipt: true } } } } } });
   if (!booking) notFound();
   const bookingItems = await prisma.$queryRaw<BookingItemRow[]>`
     SELECT "id"::text, "item_name", "quantity"::text, "unit_price"::text, "line_total"::text

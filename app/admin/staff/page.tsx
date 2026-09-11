@@ -6,7 +6,7 @@ import { getCurrentStaff } from "@/lib/auth";
 import styles from "../admin.module.css";
 
 export default async function StaffPage() {
-  const staff = await getCurrentStaff(new Request("http://localhost", { headers: headers() }));
+  const staff = await getCurrentStaff(new Request("http://localhost", { headers: await headers() }));
   if (!staff) redirect("/login");
   if (staff.role !== Role.SUPER_ADMIN) redirect("/pos/dashboard");
   return <main className={styles.page}><div className={styles.shell}><header className={styles.header}><p>ACCESS CONTROL</p><h1>POS users</h1><span>Create Super Admin, Branch Admin, and Cashier accounts for this POS only.</span></header><StaffTable/></div></main>;

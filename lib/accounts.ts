@@ -17,9 +17,11 @@ export function dateRange(url: URL) {
 function localDateBoundary(value: string, endOfDay: boolean) {
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) return new Date(Number.NaN);
-  return endOfDay
-    ? new Date(year, month - 1, day, 23, 59, 59, 999)
-    : new Date(year, month - 1, day, 0, 0, 0, 0);
+  const sriLankaOffsetMinutes = 5 * 60 + 30;
+  const utcBoundary = endOfDay
+    ? Date.UTC(year, month - 1, day, 23, 59, 59, 999)
+    : Date.UTC(year, month - 1, day, 0, 0, 0, 0);
+  return new Date(utcBoundary - sriLankaOffsetMinutes * 60 * 1000);
 }
 
 function emptyBookingBreakdown() {

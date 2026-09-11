@@ -7,7 +7,7 @@ import { getCurrentStaff } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const staff = await getCurrentStaff(new Request("http://localhost", { headers: headers() }));
+  const staff = await getCurrentStaff(new Request("http://localhost", { headers: await headers() }));
   if (!staff) redirect("/login");
   if (staff.role !== Role.SUPER_ADMIN && staff.role !== Role.BRANCH_ADMIN) redirect("/pos/dashboard");
   const branch = staff.role === Role.BRANCH_ADMIN && staff.branch_id ? await prisma.branch.findUnique({ where: { id: staff.branch_id }, select: { name: true } }) : null;
