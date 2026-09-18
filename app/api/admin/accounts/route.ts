@@ -2,6 +2,7 @@ import { PaymentDirection, PaymentMethod, PaymentSource, Prisma, Role } from "@p
 import { NextResponse } from "next/server";
 import { dateRange, financialData } from "@/lib/accounts";
 import { getCurrentStaff } from "@/lib/auth";
+import { parseDateOnly } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 
 async function requireAdmin(request: Request) {
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
     const amount = Number(body.amount);
     const paymentMethod = Object.values(PaymentMethod).includes(body.payment_method) ? body.payment_method as PaymentMethod : null;
     const reference = typeof body.reference === "string" && body.reference.trim() ? body.reference.trim() : null;
-    const incurredAt = typeof body.incurred_at === "string" && body.incurred_at ? new Date(`${body.incurred_at}T00:00:00`) : null;
+    const incurredAt = typeof body.incurred_at === "string" && body.incurred_at ? parseDateOnly(body.incurred_at) : null;
     const branchId = staff.branch_id!;
     const existing = id ? await prisma.branchExpense.findFirst({ where: { id, branch_id: branchId }, include: { payments: { where: { source: PaymentSource.EXPENSE }, orderBy: { paid_at: "desc" }, take: 1 } } }) : null;
     const expenseType = expenseTypeId ? await prisma.expenseType.findUnique({ where: { id: expenseTypeId } }) : null;
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
   const description = typeof body.description === "string" ? body.description.trim() : "";
   const amount = Number(body.amount);
   const paymentMethod = Object.values(PaymentMethod).includes(body.payment_method) ? body.payment_method as PaymentMethod : null;
-  const incurredAt = typeof body.incurred_at === "string" && body.incurred_at ? new Date(`${body.incurred_at}T00:00:00`) : new Date();
+  const incurredAt = typeof body.incurred_at === "string" && body.incurred_at ? parseDateOnly(body.incurred_at) : new Date();
   const branch = branchId ? await prisma.branch.findFirst({ where: { id: branchId, is_active: true } }) : null;
   const expenseType = expenseTypeId ? await prisma.expenseType.findUnique({ where: { id: expenseTypeId } }) : null;
   if (!branch || !expenseType || !description || !Number.isFinite(amount) || amount <= 0 || !paymentMethod || Number.isNaN(incurredAt.getTime())) return NextResponse.json({ error: "Valid branch, expense name, description, amount, date, and payment method are required" }, { status: 400 });

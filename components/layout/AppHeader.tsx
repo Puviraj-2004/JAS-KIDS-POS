@@ -19,7 +19,7 @@ const superAdminLinks = [
 const branchAdminLinks = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/pos/bookings", label: "Bookings", icon: BookOpenCheck },
-  { href: "/pos/sales", label: "Sales", icon: ShoppingCart },
+  { href: "/pos/sales/new", label: "Sales", icon: ShoppingCart },
   { href: "/admin/suppliers", label: "Suppliers & Accounts", icon: Truck },
   { href: "/admin/items", label: "Items, Services & Packages", icon: PackageOpen },
   { href: "/admin/stock", label: "Stock & Wastage", icon: Boxes },
@@ -29,7 +29,7 @@ const branchAdminLinks = [
 const cashierLinks = [
   { href: "/pos/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/pos/bookings", label: "Bookings", icon: BookOpenCheck },
-  { href: "/pos/sales", label: "Sales", icon: ShoppingCart },
+  { href: "/pos/sales/new", label: "Sales", icon: ShoppingCart },
   { href: "/pos/stock", label: "Stock & Wastage", icon: Boxes },
 ];
 

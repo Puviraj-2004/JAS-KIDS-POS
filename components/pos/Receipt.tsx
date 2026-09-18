@@ -1,8 +1,12 @@
+import { discountLabel } from "@/lib/pricing";
+import { formatSriLankaDate, parseDateOnly } from "@/lib/date";
 import styles from "./Receipt.module.css";
 
 const money = new Intl.NumberFormat("en-LK", { style: "currency", currency: "LKR" });
 
 type BaseProps = {
+  discountType?: string;
+  discountValue?: string | number;
   receiptNo: string;
   branchName: string;
   branchAddress?: string | null;
@@ -42,6 +46,9 @@ export function BookingReceipt(props: BaseProps & {
   startTime: string;
   endTime: string;
   durationMinutes: number;
+  subtotal?: number | null;
+  discount?: number;
+  externalDiscount?: number;
   total: number;
   paidBefore: number;
   collectedNow: number;
@@ -53,9 +60,12 @@ export function BookingReceipt(props: BaseProps & {
   return <article className={styles.receipt} data-print-receipt>
     <Header {...props}/><h2>BOOKING RECEIPT</h2><dl>
       <div><dt>Booking</dt><dd>{bookingTypeLabel(props.bookingType)}</dd></div><div><dt>Ref</dt><dd>{props.referenceNo}</dd></div>
-      <div><dt>Date</dt><dd>{new Date(`${props.bookingDate}T00:00:00`).toLocaleDateString("en-GB")}</dd></div><div><dt>Time</dt><dd>{props.startTime.slice(0,5)}–{props.endTime.slice(0,5)}</dd></div>
+      <div><dt>Date</dt><dd>{formatSriLankaDate(parseDateOnly(props.bookingDate))}</dd></div><div><dt>Time</dt><dd>{props.startTime.slice(0,5)}–{props.endTime.slice(0,5)}</dd></div>
       <div><dt>Children</dt><dd>{props.childCount}</dd></div>
     </dl>{props.items && props.items.length > 0 ? <><div className={styles.rule}/><table><thead><tr><th>Item</th><th>Qty</th><th>Total</th></tr></thead><tbody>{props.items.map(item => <tr key={item.id}><td>{item.product_name}<small>{Number(item.quantity)} × {money.format(Number(item.unit_price))}</small></td><td>{Number(item.quantity)}</td><td>{money.format(Number(item.line_total))}</td></tr>)}</tbody></table></> : <><div className={styles.rule}/><dl><div><dt>Item</dt><dd>{props.serviceName || props.slotName || "Play session"}</dd></div></dl></>}<div className={styles.rule}/><dl className={styles.totals}>
+      {props.subtotal != null && <div><dt>Subtotal</dt><dd>{money.format(props.subtotal)}</dd></div>}
+      {Number(props.externalDiscount) > 0 && <div><dt>Website benefits</dt><dd>-{money.format(props.externalDiscount!)}</dd></div>}
+      {Number(props.discount) > 0 && <div><dt>{discountLabel(props.discountType, props.discountValue)}{props.bookingType.startsWith("ONLINE") ? " on balance" : ""}</dt><dd>-{money.format(props.discount!)}</dd></div>}
       <div className={styles.grand}><dt>Total</dt><dd>{money.format(props.total)}</dd></div><div><dt>Paid</dt><dd>{money.format(paid)}</dd></div><div><dt>Balance</dt><dd>{money.format(balance)}</dd></div><div><dt>Method</dt><dd>{props.paymentMethod.replaceAll("_", " ")}</dd></div>
     </dl><Footer/>
   </article>;
@@ -75,7 +85,7 @@ export function SaleReceipt(props: BaseProps & {
   return <article className={styles.receipt} data-print-receipt>
     <Header {...props}/><h2>SALES RECEIPT</h2><dl><div><dt>Sale No</dt><dd>{props.saleNo}</dd></div><div><dt>Status</dt><dd>{props.status.replaceAll("_", " ")}</dd></div></dl>
     <div className={styles.rule}/><table><thead><tr><th>Item</th><th>Qty</th><th>Total</th></tr></thead><tbody>{props.items.map(item => <tr key={item.id}><td>{item.product_name}<small>{Number(item.quantity)} × {money.format(Number(item.unit_price))}</small></td><td>{Number(item.quantity)}</td><td>{money.format(Number(item.line_total))}</td></tr>)}</tbody></table>
-    <div className={styles.rule}/><dl className={styles.totals}><div><dt>Subtotal</dt><dd>{money.format(Number(props.subtotal))}</dd></div>{Number(props.discount) > 0 && <div><dt>Discount</dt><dd>−{money.format(Number(props.discount))}</dd></div>}<div className={styles.grand}><dt>Total</dt><dd>{money.format(Number(props.total))}</dd></div><div><dt>Paid</dt><dd>{money.format(Number(props.amountReceived))}</dd></div><div><dt>Change</dt><dd>{money.format(Number(props.changeGiven))}</dd></div><div><dt>Method</dt><dd>{props.paymentMethod.replaceAll("_", " ")}</dd></div></dl>
+    <div className={styles.rule}/><dl className={styles.totals}><div><dt>Subtotal</dt><dd>{money.format(Number(props.subtotal))}</dd></div>{Number(props.discount) > 0 && <div><dt>{discountLabel(props.discountType, props.discountValue)}</dt><dd>−{money.format(Number(props.discount))}</dd></div>}<div className={styles.grand}><dt>Total</dt><dd>{money.format(Number(props.total))}</dd></div><div><dt>Paid</dt><dd>{money.format(Number(props.amountReceived))}</dd></div><div><dt>Change</dt><dd>{money.format(Number(props.changeGiven))}</dd></div><div><dt>Method</dt><dd>{props.paymentMethod.replaceAll("_", " ")}</dd></div></dl>
     <Footer/>
   </article>;
 }

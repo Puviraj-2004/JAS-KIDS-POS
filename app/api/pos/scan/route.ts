@@ -1,3 +1,4 @@
+import { sumAmounts, moneyAmount } from "@/lib/pricing";
 import axios from "axios";
 import { BookingType, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
@@ -31,6 +32,8 @@ type PublicTicket = {
   payment_status: string;
   payment_method: string | null;
   total_price: number;
+  discount?: number;
+  pricing_version?: number;
   amount_paid: number;
   amount_due: number;
   branch_name: string;
@@ -106,20 +109,6 @@ export async function POST(request: NextRequest) {
       { status: 502 },
     );
   }
-  if (ticket.qr_status !== "issued") {
-    const alreadyUsed = ticket.qr_status === "used";
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: alreadyUsed ? "ALREADY_USED" : "INVALID_QR_STATUS",
-          message: alreadyUsed ? "This QR has already been used" : "This QR is not valid for entry",
-        },
-      },
-      { status: 422 },
-    );
-  }
-
   const branch = staff.branch_id
     ? await prisma.branch.findUnique({ where: { id: staff.branch_id } })
     : await prisma.branch.findFirst({
@@ -140,6 +129,33 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // A completed POS booking must be available for receipt reprints even though
+  // the public service has already marked its QR as used.
+  const savedBooking = await prisma.booking.findFirst({
+    where: {
+      branch_id: branch.id,
+      OR: [
+        { external_booking_id: ticket.booking_id },
+        { qr_hash: ticket.qr_hash },
+        { reference_no: ticket.reference_no },
+      ],
+    },
+    include: { checkin: true },
+  });
+  if (ticket.qr_status !== "issued" && !savedBooking?.checkin) {
+    const alreadyUsed = ticket.qr_status === "used";
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: alreadyUsed ? "ALREADY_USED" : "INVALID_QR_STATUS",
+          message: alreadyUsed ? "This QR has already been used" : "This QR is not valid for entry",
+        },
+      },
+      { status: 422 },
+    );
+  }
+
   const bookingDate = parseDate(ticket.date);
   if (!bookingDate) {
     return NextResponse.json(
@@ -150,6 +166,14 @@ export async function POST(request: NextRequest) {
 
   const children = Array.isArray(ticket.children) ? ticket.children : [];
   const bookingType = parseBookingType(ticket);
+  let importedTotal: number, externalDiscount: number, paid: number, due: number;
+  try {
+    importedTotal = moneyAmount(ticket.total_price);
+    externalDiscount = moneyAmount(ticket.discount ?? 0);
+    paid = moneyAmount(ticket.amount_paid);
+    due = ticket.pricing_version === 2 ? moneyAmount(ticket.amount_due) : moneyAmount(Math.max(0, importedTotal - paid).toFixed(2));
+    if (Math.abs(sumAmounts([paid, due]) - importedTotal) > 0.01) throw new Error("Ticket payment amounts do not reconcile");
+  } catch { return NextResponse.json({ success: false, error: "Ticket pricing is inconsistent. Review the website booking before check-in." }, { status: 422 }); }
   const bookingData = {
     external_booking_id: ticket.booking_id,
     reference_no: ticket.reference_no,
@@ -165,9 +189,11 @@ export async function POST(request: NextRequest) {
     end_time: ticket.end_time,
     slot_name: ticket.slot_name,
     service_name: ticket.service_name,
-    total_price: Number(ticket.total_price ?? 0),
-    amount_paid_at_import: Number(ticket.amount_paid ?? 0),
-    amount_due_at_import: Number(ticket.amount_due ?? 0),
+    subtotal: sumAmounts([importedTotal, externalDiscount]),
+    external_discount: externalDiscount,
+    total_price: importedTotal,
+    amount_paid_at_import: paid,
+    amount_due_at_import: due,
     external_payment_status: ticket.payment_status ?? "unknown",
     external_payment_method: ticket.payment_method,
     external_status: ticket.status ?? "unknown",
@@ -187,6 +213,11 @@ export async function POST(request: NextRequest) {
           ],
         },
       });
+      if (existing) {
+        await transaction.$queryRaw`SELECT id FROM bookings WHERE id = ${existing.id}::uuid FOR UPDATE`;
+        const completed = await transaction.checkIn.findUnique({ where: { booking_id: existing.id } });
+        if (completed) return transaction.booking.findUniqueOrThrow({ where: { id: existing.id } });
+      }
       const booking = existing
         ? await transaction.booking.update({ where: { id: existing.id }, data: bookingData })
         : await transaction.booking.create({ data: bookingData });
@@ -221,6 +252,7 @@ export async function POST(request: NextRequest) {
       return booking;
     });
 
+    const completedCheckin = await prisma.checkIn.findUnique({ where: { booking_id: savedBooking.id } });
     return NextResponse.json({
       success: true,
       booking: {
@@ -242,11 +274,17 @@ export async function POST(request: NextRequest) {
         end_time: ticket.end_time,
         slot_name: ticket.slot_name,
         service_name: ticket.service_name,
-        total_price: Number(ticket.total_price ?? 0),
-        amount_paid: Number(ticket.amount_paid ?? 0),
-        amount_due: Number(ticket.amount_due ?? 0),
-        payment_status: ticket.payment_status,
-        payment_method: ticket.payment_method,
+        subtotal: savedBooking.subtotal === null ? null : Number(savedBooking.subtotal),
+        discount: Number(savedBooking.discount),
+        discount_type: savedBooking.discount_type,
+        discount_value: Number(savedBooking.discount_value),
+        external_discount: Number(savedBooking.external_discount),
+        total_price: Number(savedBooking.total_price),
+        amount_paid: Number(savedBooking.amount_paid_at_import),
+        already_checked_in: Boolean(completedCheckin),
+        amount_due: completedCheckin ? 0 : Number(savedBooking.amount_due_at_import),
+        payment_status: completedCheckin ? "PAID" : ticket.payment_status,
+        payment_method: completedCheckin?.payment_method ?? ticket.payment_method,
         membership_id: null,
         membership_value_lkr: null,
       },

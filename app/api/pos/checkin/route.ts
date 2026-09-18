@@ -1,3 +1,4 @@
+import { calculatePricing } from "@/lib/pricing";
 import {
   BookingType,
   PaymentDirection,
@@ -70,6 +71,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       already_checked_in: true,
+      subtotal: booking.subtotal === null ? null : Number(booking.subtotal),
+      total_price: Number(booking.total_price),
+      discount: Number(booking.discount),
+      discount_type: booking.discount_type,
+      discount_value: Number(booking.discount_value),
+      external_discount: Number(booking.external_discount),
+      paid_before: Number(booking.amount_paid_at_import),
+
       receipt_no: booking.checkin.transaction?.receipt?.receipt_no ?? null,
       transaction_id: booking.checkin.transaction?.id ?? null,
       checkin_id: booking.checkin.id,
@@ -93,7 +102,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const amountDue = Math.max(0, Number(booking.amount_due_at_import));
+  let pricing;
+  try { pricing = calculatePricing(booking.amount_due_at_import.toString(), body); }
+  catch (error) { return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Invalid discount" }, { status: 400 }); }
+  const amountDue = pricing.total;
+  const finalTotal = Math.round((Number(booking.total_price) - pricing.discount) * 100) / 100;
   if (amountDue > 0 && !counterPaymentMethod) {
     return NextResponse.json(
       { success: false, error: "Select a payment method for the outstanding amount" },
@@ -102,7 +115,7 @@ export async function POST(request: NextRequest) {
   }
 
   const originalPaymentMethod = parsePaymentMethod(booking.external_payment_method);
-  const paymentMethod = counterPaymentMethod ?? originalPaymentMethod;
+  const paymentMethod = counterPaymentMethod ?? originalPaymentMethod ?? (amountDue === 0 ? PaymentMethod.CASH : null);
   if (!paymentMethod) {
     return NextResponse.json(
       { success: false, error: "The booking does not have a valid payment method" },
@@ -120,6 +133,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM bookings WHERE id = ${booking.id}::uuid FOR UPDATE`;
+      const current = await transaction.booking.findUniqueOrThrow({ where: { id: booking.id }, include: { checkin: true } });
+      if (current.checkin || current.refreshed_at.getTime() !== booking.refreshed_at.getTime()) throw new Error("BOOKING_CHANGED");
+      await transaction.booking.update({ where: { id: booking.id }, data: {
+        discount_type: pricing.discount_type, discount_value: pricing.discount_value, discount: pricing.discount,
+        total_price: finalTotal,
+      } });
       const checkin = await transaction.checkIn.create({
         data: {
           booking_id: booking.id,
@@ -137,8 +157,10 @@ export async function POST(request: NextRequest) {
           checkin_id: checkin.id,
           customer_name: booking.parent_name,
           customer_phone: booking.parent_phone,
-          subtotal: amountCollected,
-          discount: 0,
+          subtotal: pricing.subtotal,
+          discount: pricing.discount,
+          discount_type: pricing.discount_type,
+          discount_value: pricing.discount_value,
           total: amountCollected,
           amount_received: amountCollected,
           change_given: 0,
@@ -175,6 +197,7 @@ export async function POST(request: NextRequest) {
             booking_id: booking.id,
             external_booking_id: booking.external_booking_id,
             qr_hash: booking.qr_hash,
+            ...pricing,
             amount_collected: amountCollected,
             payment_method: paymentMethod,
           },
@@ -185,6 +208,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      subtotal: booking.subtotal === null ? null : Number(booking.subtotal),
+      total_price: finalTotal,
+      discount: pricing.discount,
+      discount_type: pricing.discount_type,
+      discount_value: pricing.discount_value,
+      external_discount: Number(booking.external_discount),
+      paid_before: Number(booking.amount_paid_at_import),
       receipt_no: receiptNo,
       transaction_id: result.posTransaction.id,
       checkin_id: result.checkin.id,
@@ -201,7 +231,8 @@ export async function POST(request: NextRequest) {
         payment_method: paymentMethod,
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "BOOKING_CHANGED") return NextResponse.json({ success: false, error: "Booking changed during checkout. Scan again to load the saved booking." }, { status: 409 });
     return NextResponse.json(
       { success: false, error: "The POS check-in and receipt could not be saved" },
       { status: 500 },

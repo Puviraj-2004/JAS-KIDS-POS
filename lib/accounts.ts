@@ -1,4 +1,5 @@
 import { BookingType, SaleStatus, StockMovementType } from "@prisma/client";
+import { sriLankaDateBoundary } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 
 export function dateRange(url: URL) {
@@ -17,11 +18,7 @@ export function dateRange(url: URL) {
 function localDateBoundary(value: string, endOfDay: boolean) {
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) return new Date(Number.NaN);
-  const sriLankaOffsetMinutes = 5 * 60 + 30;
-  const utcBoundary = endOfDay
-    ? Date.UTC(year, month - 1, day, 23, 59, 59, 999)
-    : Date.UTC(year, month - 1, day, 0, 0, 0, 0);
-  return new Date(utcBoundary - sriLankaOffsetMinutes * 60 * 1000);
+  return sriLankaDateBoundary(value, endOfDay);
 }
 
 function emptyBookingBreakdown() {
@@ -46,13 +43,13 @@ export async function financialData(branchId: string | null, from: Date, to: Dat
   const branchWhere = branchId ? { branch_id: branchId } : {};
   const [checkins, sales, wastage, expenses, purchases] = await Promise.all([
     prisma.checkIn.findMany({
-      where: { ...branchWhere, checked_in_at: { gte: from, lte: to } },
-      include: { booking: { select: { booking_type: true, total_price: true } } },
+      where: { ...branchWhere, status: "CHECKED_IN", checked_in_at: { gte: from, lte: to } },
+      include: { booking: { select: { booking_type: true, total_price: true, discount: true, external_discount: true } } },
       orderBy: { checked_in_at: "asc" },
     }),
     prisma.sale.findMany({
       where: { ...branchWhere, status: SaleStatus.COMPLETED, created_at: { gte: from, lte: to } },
-      select: { total: true, created_at: true },
+      select: { total: true, discount: true, created_at: true },
       orderBy: { created_at: "asc" },
     }),
     prisma.stockMovement.findMany({
@@ -79,17 +76,23 @@ export async function financialData(branchId: string | null, from: Date, to: Dat
     bookingBreakdown[key].count += 1;
   }
 
+  const bookingDiscounts = checkins.reduce((sum, checkin) => sum + Number(checkin.booking.discount) + Number(checkin.booking.external_discount), 0);
+  const saleDiscounts = sales.reduce((sum, sale) => sum + Number(sale.discount), 0);
   const cafeRevenue = sales.reduce((sum, sale) => sum + Number(sale.total), 0);
   const wastageLoss = wastage.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unit_cost ?? 0), 0);
   const expenseLoss = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
   const supplierPurchaseCost = purchases.reduce((sum, purchase) => sum + Number(purchase.total), 0);
   const playhouseRevenue = bookingBreakdown.online_playhouse.amount + bookingBreakdown.walkin_playhouse.amount;
   const birthdayRevenue = bookingBreakdown.online_birthday.amount + bookingBreakdown.walkin_birthday.amount;
-  const overallIncome = playhouseRevenue + birthdayRevenue + cafeRevenue;
+  const overallIncome = playhouseRevenue + birthdayRevenue + cafeRevenue + bookingBreakdown.unknown.amount;
   const overallExpenses = wastageLoss + expenseLoss + supplierPurchaseCost;
 
   return {
     summary: {
+      gross_amount: overallIncome + bookingDiscounts + saleDiscounts,
+      total_discounts: bookingDiscounts + saleDiscounts,
+      booking_discounts: bookingDiscounts,
+      sale_discounts: saleDiscounts,
       overall_income: overallIncome,
       overall_expenses: overallExpenses,
       net_revenue: overallIncome - overallExpenses,

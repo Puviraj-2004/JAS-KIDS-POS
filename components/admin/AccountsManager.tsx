@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { dateInputFromTimestamp, todaySriLanka } from "@/lib/date";
 import styles from "./Financial.module.css";
 
 type Branch = { id: string; name: string };
@@ -18,9 +19,9 @@ type Data = {
 };
 
 const money = new Intl.NumberFormat("en-LK", { style: "currency", currency: "LKR" });
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todaySriLanka();
 const monthStart = () => `${today().slice(0, 8)}01`;
-const expenseDate = (value?: string) => value ? new Date(value).toISOString().slice(0, 10) : today();
+const expenseDate = (value?: string) => value ? dateInputFromTimestamp(value) : today();
 
 export function AccountsManager() {
   const [data, setData] = useState<Data | null>(null);

@@ -16,6 +16,10 @@ export async function GET(request: Request) {
   if (url.searchParams.get("format") === "csv") {
     const summary = [
       ["SUMMARY"],
+      ["Gross amount (known discounts)", data.summary.gross_amount.toFixed(2)],
+      ["Booking discounts", data.summary.booking_discounts.toFixed(2)],
+      ["Sales discounts", data.summary.sale_discounts.toFixed(2)],
+      ["Total discounts", data.summary.total_discounts.toFixed(2)],
       ["Overall income", data.summary.overall_income.toFixed(2)],
       ["Overall expenses", data.summary.overall_expenses.toFixed(2)],
       ["Net revenue", data.summary.net_revenue.toFixed(2)],

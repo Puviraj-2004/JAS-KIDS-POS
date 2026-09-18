@@ -3,6 +3,7 @@
 import { Download, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./Financial.module.css";
+import { todaySriLanka } from "@/lib/date";
 
 type Branch = { id: string; name: string };
 type MoneyCount = { amount: number; count: number };
@@ -11,6 +12,10 @@ type Data = {
   branches: Branch[];
   selected_branch_id: string | null;
   summary: {
+    gross_amount: number;
+    total_discounts: number;
+    booking_discounts: number;
+    sale_discounts: number;
     overall_income: number;
     overall_expenses: number;
     net_revenue: number;
@@ -38,7 +43,7 @@ type Data = {
 };
 
 const money = new Intl.NumberFormat("en-LK", { style: "currency", currency: "LKR" });
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todaySriLanka();
 const currentMonth = () => today().slice(0, 7);
 
 function monthRange(month: string) {
@@ -105,6 +110,17 @@ export function ReportsDashboard() {
         <SummaryCard label="Net Revenue" value={data.summary.net_revenue} tone="net" icon={<WalletCards size={21} aria-hidden="true" />} />
       </section>
 
+      <section className={styles.card}>
+        <div className={styles.cardHeader}><div><p>DISCOUNTS</p><h2>Pricing breakdown</h2></div></div>
+        <ul className={styles.list}>
+          <AmountRow label="Gross amount (known discounts)" amount={data.summary.gross_amount} />
+          <AmountRow label="Booking discounts and website benefits" amount={data.summary.booking_discounts} />
+          <AmountRow label="Sales discounts" amount={data.summary.sale_discounts} />
+          <AmountRow label="Total discounts" amount={data.summary.total_discounts} />
+          <AmountRow label="Net income" amount={data.summary.overall_income} />
+        </ul>
+        <p>Older imported bookings may not include their original website discount breakdown.</p>
+      </section>
       <div className={styles.reportGrid}>
         <section className={styles.card}>
           <div className={styles.cardHeader}><div><p>INCOME</p><h2>Revenue summary</h2></div></div>

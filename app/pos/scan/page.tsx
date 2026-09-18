@@ -1,4 +1,6 @@
 "use client";
+import { DiscountFields } from "@/components/pos/DiscountFields";
+import { previewPricing, discountLabel, type DiscountType } from "@/lib/pricing";
 
 import {
   AlertCircle,
@@ -17,6 +19,7 @@ import {
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { QRScanner } from "@/components/pos/QRScanner";
 import { BookingReceipt } from "@/components/pos/Receipt";
+import { formatSriLankaDate, parseDateOnly } from "@/lib/date";
 import styles from "./scan.module.css";
 
 type Booking = {
@@ -35,6 +38,12 @@ type Booking = {
   end_time: string;
   slot_name?: string | null;
   service_name?: string | null;
+  already_checked_in?: boolean;
+  subtotal: number | null;
+  discount: number;
+  discount_type: DiscountType;
+  discount_value: number;
+  external_discount: number;
   total_price: number;
   amount_paid: number;
   amount_due: number;
@@ -68,10 +77,10 @@ const currency = new Intl.NumberFormat("en-LK", {
 });
 
 function displayDate(value: string) {
-  const date = new Date(`${value}T00:00:00`);
+  const date = parseDateOnly(value);
   return Number.isNaN(date.getTime())
     ? value
-    : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    : formatSriLankaDate(date);
 }
 
 function displayTime(value: string) {
@@ -101,6 +110,9 @@ export default function ScanPage() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [completed, setCompleted] = useState<CompletedCheckIn | null>(null);
   const [counterPaymentMethod, setCounterPaymentMethod] = useState("CASH");
+  const [discountType, setDiscountType] = useState<DiscountType>("NONE");
+  const [discount, setDiscount] = useState("0");
+  const pricing = previewPricing(booking?.amount_due ?? 0, discountType, discount);
   const [error, setError] = useState("");
   const [fetching, setFetching] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -134,6 +146,7 @@ export default function ScanPage() {
       }
       setQrHash(normalizedValue);
       setBooking(data.booking);
+      setDiscountType("NONE"); setDiscount("0");
       setCounterPaymentMethod("CASH");
     } catch {
       setError("Could not reach the booking service. Check the connection and try again.");
@@ -154,6 +167,7 @@ export default function ScanPage() {
 
   async function confirmCheckIn() {
     if (!booking || checkingIn) return;
+    if (pricing.error) { setError(pricing.error); return; }
     setError("");
     setCheckingIn(true);
 
@@ -163,7 +177,8 @@ export default function ScanPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           qr_hash: booking.qr_hash,
-          counter_payment_method: booking.amount_due > 0 ? counterPaymentMethod : null,
+          discount_type: discountType, discount_value: discount,
+          counter_payment_method: counterPaymentMethod,
         }),
       });
       const data = await response.json();
@@ -176,7 +191,7 @@ export default function ScanPage() {
         referenceNo: booking.reference_no,
         bookingType: displayBookingType(booking.booking_type),
         amountCollected: Number(data.amount_collected ?? 0),
-        booking,
+        booking: { ...booking, subtotal: data.subtotal, total_price: data.total_price, discount: data.discount, discount_type: data.discount_type, discount_value: data.discount_value, external_discount: data.external_discount, amount_paid: data.paid_before },
         receipt: data.receipt,
         paymentStatus: data.payment_status,
       });
@@ -332,12 +347,17 @@ export default function ScanPage() {
                 </div>
 
                 <div className={styles.paymentSummary}>
-                  <div><span>Total</span><strong>{currency.format(booking.total_price)}</strong></div>
+                  {booking.external_discount > 0 && <div><span>Website benefits already applied</span><strong>{currency.format(booking.external_discount)}</strong></div>}<div><span>Total</span><strong>{currency.format(booking.total_price - pricing.discount)}</strong></div>
                   <div><span>Already paid</span><strong>{currency.format(booking.amount_paid)}</strong></div>
-                  <div className={styles.amountDue}><span>Amount due</span><strong>{currency.format(booking.amount_due)}</strong></div>
+                  <div className={styles.amountDue}><span>Amount due</span><strong>{currency.format(pricing.total)}</strong></div>
                 </div>
 
-                {booking.amount_due > 0 ? (
+                {booking.amount_due > 0 && <div className={styles.discountPanel}>
+                  <p>Additional discount on the outstanding balance, after website benefits.</p>
+                  <DiscountFields type={discountType} value={discount} subtotal={booking.amount_due} error={pricing.error} disabled={checkingIn} onTypeChange={setDiscountType} onValueChange={setDiscount} />
+                  <p>{discountLabel(discountType, discount)}: -{currency.format(pricing.discount)}</p>
+                </div>}
+                {pricing.total > 0 ? (
                   <div className={styles.paymentPanel}>
                     <div className={styles.paymentHeading}>
                       <CreditCard size={20} aria-hidden="true" />
@@ -352,7 +372,7 @@ export default function ScanPage() {
                       className={styles.select}
                       value={counterPaymentMethod}
                       onChange={(event) => setCounterPaymentMethod(event.target.value)}
-                      disabled={checkingIn}
+                      disabled={checkingIn || Boolean(pricing.error)}
                     >
                       <option value="CASH">Cash</option>
                       <option value="CARD">Card</option>
@@ -366,12 +386,12 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                <button className={styles.confirmButton} type="button" disabled={checkingIn} onClick={confirmCheckIn}>
+                <button className={styles.confirmButton} type="button" disabled={checkingIn || Boolean(pricing.error)} onClick={confirmCheckIn}>
                   {checkingIn && <LoaderCircle className={styles.spinner} size={19} />}
                   {checkingIn
                     ? "Completing check-in…"
-                    : booking.amount_due > 0
-                      ? `Collect ${currency.format(booking.amount_due)} & check in`
+                    : booking.already_checked_in ? "Show saved receipt" : pricing.total > 0
+                      ? `Collect ${currency.format(pricing.total)} & check in`
                       : "Confirm check-in"}
                 </button>
               </section>
@@ -394,7 +414,33 @@ export default function ScanPage() {
           </aside>
         </div>
       </div>
-      {completed && <BookingReceipt receiptNo={completed.receiptNo} referenceNo={completed.referenceNo} bookingType={completed.booking.booking_type} serviceName={completed.booking.service_name} slotName={completed.booking.slot_name} childCount={completed.booking.child_count} bookingDate={completed.booking.date} startTime={completed.booking.start_time} endTime={completed.booking.end_time} durationMinutes={durationMinutes(completed.booking.start_time, completed.booking.end_time)} total={completed.booking.total_price} paidBefore={completed.booking.amount_paid} collectedNow={completed.amountCollected} paymentMethod={completed.receipt.payment_method} paymentStatus={completed.paymentStatus} branchName={completed.receipt.branch_name} branchAddress={completed.receipt.branch_address} branchPhone={completed.receipt.branch_phone} servedBy={completed.receipt.served_by} issuedAt={completed.receipt.issued_at}/>} 
+      {completed && <BookingReceipt
+        receiptNo={completed.receiptNo}
+        referenceNo={completed.referenceNo}
+        bookingType={completed.booking.booking_type}
+        serviceName={completed.booking.service_name}
+        slotName={completed.booking.slot_name}
+        childCount={completed.booking.child_count}
+        bookingDate={completed.booking.date}
+        startTime={completed.booking.start_time}
+        endTime={completed.booking.end_time}
+        durationMinutes={durationMinutes(completed.booking.start_time, completed.booking.end_time)}
+        subtotal={completed.booking.subtotal}
+        discount={completed.booking.discount}
+        discountType={completed.booking.discount_type}
+        discountValue={completed.booking.discount_value}
+        externalDiscount={completed.booking.external_discount}
+        total={completed.booking.total_price}
+        paidBefore={completed.booking.amount_paid}
+        collectedNow={completed.amountCollected}
+        paymentMethod={completed.receipt.payment_method}
+        paymentStatus={completed.paymentStatus}
+        branchName={completed.receipt.branch_name}
+        branchAddress={completed.receipt.branch_address}
+        branchPhone={completed.receipt.branch_phone}
+        servedBy={completed.receipt.served_by}
+        issuedAt={completed.receipt.issued_at}
+      />}
     </main>
   );
 }

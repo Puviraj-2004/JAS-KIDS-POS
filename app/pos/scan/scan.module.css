@@ -464,3 +464,9 @@
 .captureHidden { display: none; }
 .workspace:has(.captureHidden) { grid-template-columns: minmax(0,760px); justify-content: center; }
 @media(max-width:760px) { .workspace { grid-template-columns: 1fr; } .shell { width: calc(100% - 24px); padding-top: 20px; } .workflow { gap: 12px; justify-content: space-between; } .workflow li { font-size: 12px; gap: 6px; } }
+
+.discountPanel { display: grid; gap: 12px; margin: 0 20px 16px; padding: 16px; border: 1px solid var(--pos-border); border-radius: 8px; }
+.discountPanel label { display: grid; gap: 6px; font-weight: 600; }
+.discountPanel input, .discountPanel select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--pos-border); border-radius: 6px; background: var(--pos-bg); color: var(--pos-text); font: inherit; }
+.discountPanel small { color: #b42318; }
+.discountPanel p { margin: 0; }

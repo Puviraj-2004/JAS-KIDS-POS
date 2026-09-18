@@ -1,15 +1,19 @@
 "use client";
+import { DiscountFields } from "@/components/pos/DiscountFields";
+import { previewPricing, discountLabel, lineAmount, sumAmounts, type DiscountType } from "@/lib/pricing";
+
 
 import { ArrowLeft, CalendarDays, CheckCircle2, LoaderCircle, MinusCircle, PackageCheck, Plus, Printer } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BookingReceipt } from "@/components/pos/Receipt";
+import { todaySriLanka } from "@/lib/date";
 import styles from "../bookings.module.css";
 
 type BookingType = "WALKIN_PLAYHOUSE" | "WALKIN_BIRTHDAY";
 type PaymentMethod = "CASH" | "CARD" | "UPI" | "ONLINE";
 type ProductOption = { id: string; name: string; item_category: string; selling_price: number };
-type BookingLine = { rowId: string; productId: string; quantity: string };
+type BookingLine = { rowId: string; productId: string };
 type ReceiptItem = { id: string; product_name: string; quantity: number; unit_price: number; line_total: number };
 type CompletedBooking = {
   reference_no: string;
@@ -21,6 +25,10 @@ type CompletedBooking = {
   end_time: string;
   slot_name: string | null;
   service_name: string | null;
+  subtotal: number;
+  discount: number;
+  discount_type: DiscountType;
+  discount_value: number;
   total_price: number;
   amount_collected: number;
   amount_received: number;
@@ -55,13 +63,13 @@ function durationMinutes(start: string, end: string) {
 }
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return todaySriLanka();
 }
 
 export default function NewBookingPage() {
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [bookingType, setBookingType] = useState<BookingType>("WALKIN_PLAYHOUSE");
-  const [lines, setLines] = useState<BookingLine[]>([{ rowId: rowId(), productId: "", quantity: "1" }]);
+  const [lines, setLines] = useState<BookingLine[]>([{ rowId: rowId(), productId: "" }]);
   const [childCount, setChildCount] = useState("1");
   const [bookingDate, setBookingDate] = useState(today());
   const [startTime, setStartTime] = useState("");
@@ -69,6 +77,9 @@ export default function NewBookingPage() {
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [discountType, setDiscountType] = useState<DiscountType>("NONE");
+  const [discount, setDiscount] = useState("0");
+  const [checkoutKey, setCheckoutKey] = useState("");
   const [amountReceived, setAmountReceived] = useState("");
   const [note, setNote] = useState("");
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -82,7 +93,7 @@ export default function NewBookingPage() {
       setLoadingOptions(true);
       setError("");
       try {
-        const response = await fetch("/api/pos/walkin");
+        const response = await fetch(`/api/pos/walkin?booking_type=${bookingType}`);
         const data = await response.json();
         if (!response.ok) throw new Error(data.error ?? "Booking options could not be loaded");
         if (mounted) setProducts(data.products ?? []);
@@ -94,32 +105,35 @@ export default function NewBookingPage() {
     }
     void loadOptions();
     return () => { mounted = false; };
-  }, []);
+  }, [bookingType]);
 
   const filteredProducts = useMemo(() => {
     if (bookingType === "WALKIN_BIRTHDAY") {
-      return products.filter((product) => ["BIRTHDAY_PACKAGE", "BIRTHDAY_ITEM", "SERVICE_ITEM", "OTHER_ITEM", "OTHER_PACKAGE", "CAFE_ITEM"].includes(product.item_category));
+      return products.filter((product) => ["BIRTHDAY_PACKAGE", "SERVICE_ITEM", "OTHER_PACKAGE"].includes(product.item_category));
     }
     return products.filter((product) => product.item_category === "PLAYHOUSE_PACKAGE");
   }, [bookingType, products]);
   const productMap = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const pricedLines = lines.map((line) => {
     const product = productMap.get(line.productId);
-    const quantity = Math.max(0, Number(line.quantity || 0));
-    const lineTotal = product ? Math.round(product.selling_price * quantity * 100) / 100 : 0;
+    const quantity = product ? 1 : 0;
+    const lineTotal = product ? lineAmount(product.selling_price, quantity.toFixed(3)) : 0;
     return { ...line, product, quantity, lineTotal };
   });
-  const total = Math.round(pricedLines.reduce((sum, line) => sum + line.lineTotal, 0) * 100) / 100;
+  const subtotal = sumAmounts(pricedLines.map(line => line.lineTotal));
+  const pricing = previewPricing(subtotal, discountType, discount);
+  const total = pricing.total;
+  useEffect(() => { setCheckoutKey(crypto.randomUUID()); }, [lines, discountType, discount, amountReceived, paymentMethod, bookingType, childCount, bookingDate, startTime, endTime, contactName, contactPhone, note]);
   const received = Number(amountReceived || 0);
   const change = Math.max(0, Math.round((received - total) * 100) / 100);
 
   useEffect(() => {
-    setLines([{ rowId: rowId(), productId: "", quantity: "1" }]);
-    setAmountReceived("");
+    setLines([{ rowId: rowId(), productId: "" }]);
+    setAmountReceived(""); setDiscount("0"); setDiscountType("NONE");
   }, [bookingType]);
 
   useEffect(() => {
-    if (total > 0) setAmountReceived(String(total));
+    setAmountReceived(String(total));
   }, [total]);
 
   function updateLine(index: number, nextLine: Partial<BookingLine>) {
@@ -127,7 +141,7 @@ export default function NewBookingPage() {
   }
 
   function addLine() {
-    setLines((current) => [...current, { rowId: rowId(), productId: "", quantity: "1" }]);
+    setLines((current) => [...current, { rowId: rowId(), productId: "" }]);
   }
 
   function removeLine(index: number) {
@@ -137,6 +151,7 @@ export default function NewBookingPage() {
   async function submitBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
+    if (pricing.error) { setError(pricing.error); return; }
     const selectedItems = pricedLines.filter((line) => line.product && line.quantity > 0).map((line) => ({ product_id: line.product!.id, quantity: line.quantity }));
     if (selectedItems.length === 0) {
       setError("Add at least one package, service, or item.");
@@ -150,6 +165,7 @@ export default function NewBookingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          discount_type: discountType, discount_value: discount, idempotency_key: checkoutKey,
           booking_type: bookingType,
           items: selectedItems,
           child_count: Number(childCount),
@@ -168,6 +184,7 @@ export default function NewBookingPage() {
         setError(data.error ?? "Booking could not be completed");
         return;
       }
+      if (data.duplicate) { window.location.assign(`/pos/bookings/${data.booking_id}`); return; }
       setCompleted(data);
     } catch {
       setError("Booking could not be completed. Check the connection and try again.");
@@ -178,14 +195,14 @@ export default function NewBookingPage() {
 
   function resetForm() {
     setCompleted(null);
-    setLines([{ rowId: rowId(), productId: "", quantity: "1" }]);
+    setLines([{ rowId: rowId(), productId: "" }]);
     setChildCount("1");
     setBookingDate(today());
     setStartTime("");
     setEndTime("");
     setContactName("");
     setContactPhone("");
-    setAmountReceived("");
+    setAmountReceived(""); setDiscount("0"); setDiscountType("NONE");
     setNote("");
     setPaymentMethod("CASH");
     setError("");
@@ -225,7 +242,7 @@ export default function NewBookingPage() {
             <div className={styles.completeGrid}>
               <div><small>Booking type</small><strong>{completed.booking_type === "WALKIN_BIRTHDAY" ? "Walk-in Birthday" : "Walk-in Playhouse"}</strong></div>
               <div><small>Date & time</small><strong>{completed.booking_date} · {completed.start_time}–{completed.end_time}</strong></div>
-              <div><small>Total</small><strong>{money.format(completed.total_price)}</strong></div>
+              <div><small>Subtotal</small><strong>{money.format(completed.subtotal)}</strong></div><div><small>{discountLabel(completed.discount_type, completed.discount_value)}</small><strong>-{money.format(completed.discount)}</strong></div><div><small>Total</small><strong>{money.format(completed.total_price)}</strong></div>
               <div><small>Change</small><strong>{money.format(completed.change_given)}</strong></div>
             </div>
             <div className={styles.completeActions}>
@@ -268,13 +285,9 @@ export default function NewBookingPage() {
                           {filteredProducts.map((product) => <option key={product.id} value={product.id}>{product.name} · {categoryLabel(product.item_category)} · {money.format(product.selling_price)}</option>)}
                         </select>
                       </label>
-                      <label>
-                        <span>Qty</span>
-                        <input required type="number" min="0.001" step="0.001" value={line.quantity} onChange={(event) => updateLine(index, { quantity: event.target.value })} />
-                      </label>
                       <div className={styles.lineTotal}>
                         <span>Line total</span>
-                        <strong>{money.format(selectedProduct ? selectedProduct.selling_price * Number(line.quantity || 0) : 0)}</strong>
+                        <strong>{money.format(selectedProduct ? selectedProduct.selling_price : 0)}</strong>
                       </div>
                       <button type="button" className={styles.iconAction} disabled={lines.length === 1} onClick={() => removeLine(index)} aria-label="Remove item">
                         <MinusCircle size={20} aria-hidden="true" />
@@ -317,6 +330,7 @@ export default function NewBookingPage() {
                   <span>Phone</span>
                   <input type="tel" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} placeholder="Optional" />
                 </label>
+                <DiscountFields type={discountType} value={discount} subtotal={subtotal} error={pricing.error} disabled={saving} onTypeChange={setDiscountType} onValueChange={setDiscount} />
                 <label>
                   <span>Payment method</span>
                   <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}>
@@ -339,10 +353,12 @@ export default function NewBookingPage() {
 
             <aside className={styles.paymentPreview}>
               <div><span>Items</span><strong>{pricedLines.filter((line) => line.product && line.quantity > 0).length}</strong></div>
+              <div><span>Subtotal</span><strong>{money.format(subtotal)}</strong></div>
+              <div><span>{discountLabel(discountType, discount)}</span><strong>-{money.format(pricing.discount)}</strong></div>
               <div><span>Total</span><strong>{money.format(total)}</strong></div>
               <div><span>Amount received</span><strong>{money.format(received)}</strong></div>
               <div><span>Change</span><strong>{money.format(change)}</strong></div>
-              <button type="submit" disabled={saving || loadingOptions || total <= 0}>
+              <button type="submit" disabled={saving || loadingOptions || subtotal <= 0 || Boolean(pricing.error)}>
                 {saving && <LoaderCircle className={styles.spinner} size={18} aria-hidden="true" />}
                 {saving ? "Completing booking..." : "Complete booking"}
               </button>
@@ -362,6 +378,7 @@ export default function NewBookingPage() {
           startTime={completed.start_time}
           endTime={completed.end_time}
           durationMinutes={durationMinutes(completed.start_time, completed.end_time)}
+          subtotal={completed.subtotal} discount={completed.discount} discountType={completed.discount_type} discountValue={completed.discount_value}
           total={completed.total_price}
           paidBefore={0}
           collectedNow={completed.amount_collected}

@@ -1,7 +1,9 @@
+import { calculatePricing, lineAmount, sumAmounts, moneyAmount } from "@/lib/pricing";
 import { randomBytes } from "crypto";
 import { ItemCategory, PaymentDirection, PaymentMethod, PaymentSource, PaymentStatus, Prisma, Role, SaleStatus, StockMovementType, TransactionType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentStaff } from "@/lib/auth";
+import { sriLankaDateBoundary } from "@/lib/date";
 import { changeStock } from "@/lib/inventory";
 import { prisma } from "@/lib/prisma";
 import { canCancelSale, parsePaymentMethod, resolveSaleBranch } from "@/lib/sales";
@@ -36,8 +38,8 @@ export async function GET(request: Request) {
   const status = Object.values(SaleStatus).includes(url.searchParams.get("status") as SaleStatus) ? url.searchParams.get("status") as SaleStatus : null;
   const fromValue = url.searchParams.get("from");
   const toValue = url.searchParams.get("to");
-  const from = fromValue ? new Date(`${fromValue}T00:00:00`) : null;
-  const to = toValue ? new Date(`${toValue}T23:59:59.999`) : null;
+  const from = fromValue ? sriLankaDateBoundary(fromValue, false) : null;
+  const to = toValue ? sriLankaDateBoundary(toValue, true) : null;
   const createdRange = from || to ? { ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}), ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}) } : undefined;
   const saleWhere: Prisma.SaleWhereInput = {
     ...(saleBranchId ? { branch_id: saleBranchId } : {}),
@@ -110,9 +112,11 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const idempotencyKey = typeof body?.idempotency_key === "string" ? body.idempotency_key.trim() : "";
   const paymentMethod = parsePaymentMethod(body?.payment_method);
-  const discount = nonNegative(body?.discount ?? 0);
-  const amountReceivedInput = nonNegative(body?.amount_received);
-  if (!idempotencyKey || idempotencyKey.length > 100 || !paymentMethod || discount === null || !Array.isArray(body?.items) || body.items.length === 0 || body.items.length > 100) {
+
+  let amountReceivedInput: number | null = null;
+  try { if (body?.amount_received !== undefined) amountReceivedInput = moneyAmount(body.amount_received); }
+  catch { return NextResponse.json({ error: "Invalid amount received" }, { status: 400 }); }
+  if (!idempotencyKey || idempotencyKey.length > 100 || !paymentMethod || !Array.isArray(body?.items) || body.items.length === 0 || body.items.length > 100) {
     return NextResponse.json({ error: "Valid items, payment method, discount, and checkout key are required" }, { status: 400 });
   }
 
@@ -123,13 +127,14 @@ export async function POST(request: Request) {
   for (const item of body.items) {
     const productId = typeof item?.stock_batch_id === "string" ? item.stock_batch_id : typeof item?.product_id === "string" ? item.product_id : "";
     const quantity = Number(item?.quantity);
-    if (!productId || !Number.isFinite(quantity) || quantity <= 0 || quantity > 10000) {
+    if (!productId || !Number.isFinite(quantity) || quantity <= 0 || quantity > 10000 || !Number.isInteger(quantity * 1000)) {
       return NextResponse.json({ error: "Every sale item requires a valid product and quantity" }, { status: 400 });
     }
     consolidated.set(productId, (consolidated.get(productId) ?? 0) + quantity);
   }
 
   const existing = await prisma.sale.findUnique({ where: { idempotency_key: idempotencyKey }, include: { transaction: { include: { receipt: true } } } });
+  if (existing && existing.branch_id !== branch.id) return NextResponse.json({ error: "Checkout key is already in use" }, { status: 409 });
   if (existing) return NextResponse.json({ success: true, sale_id: existing.id, receipt_no: existing.transaction?.receipt?.receipt_no, duplicate: true });
 
   const productIds = Array.from(consolidated.keys());
@@ -139,15 +144,18 @@ export async function POST(request: Request) {
   });
   if (inventory.length !== productIds.length) return NextResponse.json({ error: "One or more products are unavailable at this branch" }, { status: 409 });
 
-  const lines = inventory.map((stock) => {
+  let lines;
+  let pricing;
+  try {
+  lines = inventory.map((stock) => {
     const quantity = consolidated.get(stock.id)!;
     const unitPrice = Number(stock.selling_price);
-    return { stock, quantity, unitPrice, lineTotal: Math.round(quantity * unitPrice * 100) / 100 };
+    return { stock, quantity, unitPrice, lineTotal: lineAmount(stock.selling_price.toString(), quantity.toFixed(3)) };
   });
   if (lines.some((line) => line.quantity > Number(line.stock.quantity_remaining))) return NextResponse.json({ error: "One or more selected batches do not have enough stock" }, { status: 409 });
-  const subtotal = Math.round(lines.reduce((sum, line) => sum + line.lineTotal, 0) * 100) / 100;
-  if (discount > subtotal) return NextResponse.json({ error: "Discount cannot exceed the subtotal" }, { status: 400 });
-  const total = Math.round((subtotal - discount) * 100) / 100;
+  pricing = calculatePricing(sumAmounts(lines.map(line => line.lineTotal)).toFixed(2), body);
+  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid pricing" }, { status: 400 }); }
+  const { subtotal, discount, discount_type, discount_value, total } = pricing;
   const amountReceived = amountReceivedInput ?? total;
   if (amountReceived < total) return NextResponse.json({ error: "Amount received cannot be less than the total" }, { status: 400 });
   const changeGiven = Math.round((amountReceived - total) * 100) / 100;
@@ -162,7 +170,7 @@ export async function POST(request: Request) {
           branch_id: branch.id,
           cashier_id: staff.id,
           subtotal,
-          discount,
+          discount, discount_type, discount_value,
           total,
           amount_received: amountReceived,
           change_given: changeGiven,
@@ -206,7 +214,7 @@ export async function POST(request: Request) {
         type: TransactionType.PRODUCT_SALE,
         sale_id: created.id,
         subtotal,
-        discount,
+        discount, discount_type, discount_value,
         total,
         amount_received: amountReceived,
         change_given: changeGiven,
@@ -214,7 +222,7 @@ export async function POST(request: Request) {
         payment_status: PaymentStatus.PAID,
         staff_id: staff.id,
       } });
-      await transaction.payment.create({ data: {
+      if (total > 0) await transaction.payment.create({ data: {
         branch_id: branch.id,
         direction: PaymentDirection.INCOME,
         source: PaymentSource.SALE,
@@ -230,7 +238,7 @@ export async function POST(request: Request) {
         action: "PRODUCT_SALE_COMPLETED",
         entity_type: "Sale",
         entity_id: created.id,
-        new_value: { sale_no: saleNo, receipt_no: receiptNo, subtotal, discount, total, payment_method: paymentMethod },
+        new_value: { sale_no: saleNo, receipt_no: receiptNo, subtotal, discount, discount_type, discount_value, total, payment_method: paymentMethod },
       } });
       return created;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -240,7 +248,7 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") return NextResponse.json({ error: "Stock changed during checkout. Review the cart and try again." }, { status: 409 });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const duplicate = await prisma.sale.findUnique({ where: { idempotency_key: idempotencyKey }, include: { transaction: { include: { receipt: true } } } });
-      if (duplicate) return NextResponse.json({ success: true, sale_id: duplicate.id, receipt_no: duplicate.transaction?.receipt?.receipt_no, duplicate: true });
+      if (duplicate && duplicate.branch_id === branch.id) return NextResponse.json({ success: true, sale_id: duplicate.id, receipt_no: duplicate.transaction?.receipt?.receipt_no, duplicate: true });
     }
     return NextResponse.json({ error: "The sale could not be completed" }, { status: 500 });
   }
