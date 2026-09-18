@@ -61,6 +61,9 @@ export async function POST(request: Request) {
     : null;
   const paymentMethod = parsePaymentMethod(body?.payment_method);
   const childCount = Math.max(1, Math.floor(numberValue(body?.child_count) ?? 1));
+  const childNames = Array.isArray(body?.child_names)
+    ? body.child_names.filter((name: unknown): name is string => typeof name === "string").map((name: string) => name.trim()).filter(Boolean).slice(0, childCount)
+    : [];
   let amountReceived: number;
   try { amountReceived = moneyAmount(body?.amount_received); }
   catch { return NextResponse.json({ success: false, error: "Invalid amount received" }, { status: 400 }); }
@@ -147,6 +150,9 @@ export async function POST(request: Request) {
         source_payload: { source: "POS_WALKIN", item_count: bookingItems.length, note },
         imported_by: staff.id,
       } });
+      for (const [index, name] of childNames.entries()) {
+        await transaction.bookingChild.create({ data: { booking_id: booking.id, position: index + 1, name } });
+      }
       for (const item of bookingItems) {
         await transaction.$executeRaw`
           INSERT INTO "booking_items" ("booking_id", "product_id", "item_name", "item_category", "quantity", "unit_price", "line_total")

@@ -86,6 +86,8 @@ export default function NewBookingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState<CompletedBooking | null>(null);
+  const [childNames, setChildNames] = useState<string[]>([]);
+  const [childModalOpen, setChildModalOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -148,7 +150,7 @@ export default function NewBookingPage() {
     setLines((current) => current.length === 1 ? current : current.filter((_, lineIndex) => lineIndex !== index));
   }
 
-  async function submitBooking(event: FormEvent<HTMLFormElement>) {
+  function openChildDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
     if (pricing.error) { setError(pricing.error); return; }
@@ -157,6 +159,14 @@ export default function NewBookingPage() {
       setError("Add at least one package, service, or item.");
       return;
     }
+    const count = bookingType === "WALKIN_BIRTHDAY" ? 1 : Math.max(1, Math.floor(Number(childCount) || 1));
+    setChildNames((current) => Array.from({ length: count }, (_, index) => current[index] ?? ""));
+    setChildModalOpen(true);
+  }
+
+  async function submitBooking(namesToSave = childNames) {
+    if (saving) return;
+    const selectedItems = pricedLines.filter((line) => line.product && line.quantity > 0).map((line) => ({ product_id: line.product!.id, quantity: line.quantity }));
     setSaving(true);
     setError("");
     setCompleted(null);
@@ -177,6 +187,7 @@ export default function NewBookingPage() {
           payment_method: paymentMethod,
           amount_received: Number(amountReceived),
           note,
+          child_names: namesToSave.map((name) => name.trim()).filter(Boolean),
         }),
       });
       const data = await response.json();
@@ -185,6 +196,7 @@ export default function NewBookingPage() {
         return;
       }
       if (data.duplicate) { window.location.assign(`/pos/bookings/${data.booking_id}`); return; }
+      setChildModalOpen(false);
       setCompleted(data);
     } catch {
       setError("Booking could not be completed. Check the connection and try again.");
@@ -205,6 +217,8 @@ export default function NewBookingPage() {
     setAmountReceived(""); setDiscount("0"); setDiscountType("NONE");
     setNote("");
     setPaymentMethod("CASH");
+    setChildNames([]);
+    setChildModalOpen(false);
     setError("");
   }
 
@@ -251,7 +265,7 @@ export default function NewBookingPage() {
             </div>
           </section>
         ) : (
-          <form className={styles.bookingForm} onSubmit={submitBooking}>
+          <form className={styles.bookingForm} onSubmit={openChildDetails}>
             <section className={styles.typePicker} aria-label="Booking type">
               <button type="button" aria-pressed={bookingType === "WALKIN_PLAYHOUSE"} onClick={() => setBookingType("WALKIN_PLAYHOUSE")}>
                 <PackageCheck size={22} aria-hidden="true" />
@@ -366,6 +380,24 @@ export default function NewBookingPage() {
           </form>
         )}
       </div>
+      {childModalOpen && (
+        <div className={styles.modalBackdrop} role="presentation">
+          <section className={styles.childModal} role="dialog" aria-modal="true" aria-labelledby="child-details-title">
+            <div className={styles.modalHeader}>
+              <div><p>OPTIONAL DETAILS</p><h2 id="child-details-title">Child names</h2></div>
+              <button type="button" onClick={() => setChildModalOpen(false)} disabled={saving} aria-label="Close child details">×</button>
+            </div>
+            <p className={styles.modalDescription}>Add names for the children attending this booking, or skip this step.</p>
+            <div className={styles.childFields}>
+              {childNames.map((name, index) => <label key={index}><span>Child {index + 1} name <small>Optional</small></span><input value={name} onChange={(event) => setChildNames((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} placeholder={`Child ${index + 1}`} autoFocus={index === 0} /></label>)}
+            </div>
+            <div className={styles.modalActions}>
+              <button type="button" onClick={() => void submitBooking([])} disabled={saving}>Skip</button>
+              <button type="button" className={styles.primaryButton} onClick={() => void submitBooking()} disabled={saving}>{saving ? "Completing..." : "Continue booking"}</button>
+            </div>
+          </section>
+        </div>
+      )}
       {completed && (
         <BookingReceipt
           receiptNo={completed.receipt_no}

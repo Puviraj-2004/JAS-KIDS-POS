@@ -90,6 +90,21 @@
 .paymentPreview button:disabled { opacity:.55; cursor:not-allowed; }
 .secondaryButton { color:var(--pos-primary); border-color:#b8d2c7; }
 .errorBanner { display:flex; align-items:center; gap:10px; margin-bottom:16px; border:1px solid #fecaca; border-radius:8px; padding:12px 14px; color:#991b1b; background:#fff1f2; font-weight:700; }
+.modalBackdrop { position:fixed; z-index:50; inset:0; display:grid; place-items:center; padding:20px; background:rgba(20,34,28,.42); }
+.childModal { width:min(480px,100%); border:1px solid var(--pos-border); border-radius:10px; padding:22px; background:#fff; box-shadow:0 20px 60px rgba(20,34,28,.22); }
+.modalHeader { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.modalHeader p { margin:0 0 5px; color:var(--pos-primary); font-size:.7rem; font-weight:800; letter-spacing:.11em; }
+.modalHeader h2 { margin:0; font-size:1.2rem; }
+.modalHeader > button { width:36px; height:36px; border:0; border-radius:6px; color:var(--pos-muted); background:transparent; font-size:24px; cursor:pointer; }
+.modalDescription { margin:14px 0 18px; color:var(--pos-muted); font-size:.9rem; }
+.childFields { display:grid; gap:12px; }
+.childFields label { display:grid; gap:7px; color:var(--pos-muted); font-size:.78rem; font-weight:700; }
+.childFields label span { display:flex; justify-content:space-between; gap:8px; }
+.childFields label small { font-weight:400; }
+.childFields input { min-height:44px; border:1px solid #c4d3cc; border-radius:8px; padding:0 12px; background:#fff; color:var(--pos-text); font:inherit; }
+.modalActions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+.modalActions button { min-height:44px; border:1px solid #b8d2c7; border-radius:8px; padding:0 14px; color:var(--pos-primary); background:#fff; font-weight:700; cursor:pointer; }
+.modalActions .primaryButton { color:#fff; background:var(--pos-primary); }
 .completeScreen { padding:34px; text-align:center; }
 .successMark { display:inline-flex; width:58px; height:58px; align-items:center; justify-content:center; border-radius:999px; color:var(--pos-primary); background:#ecfdf5; }
 .completeScreen p { margin:12px 0 6px; color:var(--pos-primary); font-size:.72rem; font-weight:800; letter-spacing:.12em; }
