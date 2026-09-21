@@ -51,6 +51,8 @@
 }
 
 .export,
+.exportPrimary,
+.exportQuiet,
 .card form button {
   display: inline-flex;
   min-height: 44px;
@@ -62,20 +64,88 @@
   padding: 0 16px;
   color: #fff;
   background: var(--pos-primary);
+  font: inherit;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
 }
 
 .export:hover,
+.exportPrimary:hover,
 .card form button:hover {
   background: var(--pos-primary);
 }
 
 .export:focus-visible,
+.exportPrimary:focus-visible,
+.exportQuiet:focus-visible,
 .card form button:focus-visible {
   outline: 3px solid rgba(8, 116, 84, .24);
   outline-offset: 3px;
+}
+
+.exportActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.exportHelp {
+  margin: -12px 2px 0;
+  color: var(--pos-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.exportHelp strong {
+  color: var(--pos-text);
+}
+
+.exportPrimary {
+  border-color: var(--pos-primary);
+}
+
+.export {
+  border: 1px solid var(--pos-primary);
+  color: var(--pos-primary);
+  background: #fff;
+}
+
+.export:hover {
+  color: #fff;
+}
+
+.exportQuiet {
+  border: 1px solid var(--pos-border);
+  color: var(--pos-text);
+  background: #fff;
+}
+
+.export:disabled,
+.exportPrimary:disabled,
+.exportQuiet:disabled {
+  cursor: wait;
+  opacity: .62;
+}
+
+.spin {
+  animation: reportSpin .8s linear infinite;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes reportSpin {
+  to { transform: rotate(360deg); }
 }
 
 .card form button:disabled {
@@ -265,7 +335,10 @@
 
   .filters label,
   .filters label:first-child,
-  .export {
+  .exportActions,
+  .export,
+  .exportPrimary,
+  .exportQuiet {
     width: 100%;
   }
 

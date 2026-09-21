@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, LoaderCircle, TrendingDown, TrendingUp, WalletCards } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./Financial.module.css";
 import { todaySriLanka } from "@/lib/date";
@@ -69,6 +69,8 @@ export function ReportsDashboard() {
   const [month, setMonth] = useState(currentMonth);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState<"xlsx" | "pdf" | "csv" | null>(null);
+  const [exportError, setExportError] = useState("");
   const range = useMemo(() => mode === "day" ? { from: day, to: day } : monthRange(month), [day, mode, month]);
   const query = useMemo(() => {
     const value = new URLSearchParams(range);
@@ -94,15 +96,60 @@ export function ReportsDashboard() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const downloadReport = useCallback(async (format: "xlsx" | "pdf" | "csv") => {
+    setExporting(format);
+    setExportError("");
+    try {
+      const parameters = new URLSearchParams(query);
+      parameters.set("format", format);
+      const response = await fetch(`/api/admin/reports?${parameters.toString()}`, { cache: "no-store" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Export could not be created");
+      }
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `jaskids-report.${format}`;
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (reason) {
+      setExportError(reason instanceof Error ? reason.message : "Export could not be created");
+    } finally {
+      setExporting(null);
+    }
+  }, [query]);
+
   return <div className={styles.layout}>
     <div className={styles.filters}>
       {data?.can_select_branch !== false ? <label>Branch<select value={branchId} onChange={event => setBranchId(event.target.value)}><option value="">All branches</option>{data?.branches.map(branch => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label> : <label>Branch<input value={data?.branches[0]?.name ?? "Assigned branch"} readOnly /></label>}
       <label>Report type<select value={mode} onChange={event => setMode(event.target.value as "day" | "month")}><option value="day">Day-wise</option><option value="month">Month-wise</option></select></label>
       {mode === "day" ? <label>Date<input type="date" value={day} onChange={event => setDay(event.target.value)} /></label> : <label>Month<input type="month" value={month} onChange={event => setMonth(event.target.value)} /></label>}
-      <a className={styles.export} href={`/api/admin/reports?${query}&format=csv`}><Download size={17} />Export CSV</a>
+      <div className={styles.exportActions} aria-label="Report downloads">
+        <button className={styles.exportPrimary} type="button" onClick={() => void downloadReport("xlsx")} disabled={exporting !== null || loading}>
+          {exporting === "xlsx" ? <LoaderCircle className={styles.spin} size={17} aria-hidden="true" /> : <FileSpreadsheet size={17} aria-hidden="true" />}
+          {exporting === "xlsx" ? "Preparing Excel…" : "Export Excel"}
+        </button>
+        <button className={styles.export} type="button" onClick={() => void downloadReport("pdf")} disabled={exporting !== null || loading}>
+          {exporting === "pdf" ? <LoaderCircle className={styles.spin} size={17} aria-hidden="true" /> : <FileText size={17} aria-hidden="true" />}
+          {exporting === "pdf" ? "Preparing PDF…" : "Download PDF"}
+        </button>
+        <button className={styles.exportQuiet} type="button" onClick={() => void downloadReport("csv")} disabled={exporting !== null || loading} title="Download the compact summary as CSV">
+          {exporting === "csv" ? <LoaderCircle className={styles.spin} size={17} aria-hidden="true" /> : <Download size={17} aria-hidden="true" />}
+          CSV
+        </button>
+      </div>
     </div>
 
+    <p className={styles.exportHelp}><strong>Excel</strong> includes detailed, filterable transaction sheets. <strong>PDF</strong> is a formatted management summary for printing and sharing.</p>
+
     {error && <p className={styles.error}>{error}</p>}
+    {exportError && <p className={styles.error} role="alert">{exportError}. Check the filters and try the export again.</p>}
+    <span className={styles.srOnly} aria-live="polite">{exporting ? `Preparing ${exporting.toUpperCase()} report` : ""}</span>
     {loading || !data ? <p className={styles.state}>{error ? "Report unavailable. Adjust the filters or refresh to retry." : "Building report…"}</p> : <>
       <section className={styles.reportHero} aria-label="Overall financial summary">
         <SummaryCard label="Overall Income" value={data.summary.overall_income} tone="income" icon={<TrendingUp size={21} aria-hidden="true" />} />
