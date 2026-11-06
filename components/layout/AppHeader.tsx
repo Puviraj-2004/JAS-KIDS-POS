@@ -1,24 +1,33 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { BarChart3, BookOpenCheck, Boxes, Building2, ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Menu, PackageOpen, ReceiptText, ShoppingCart, Store, Truck, UsersRound, X } from "lucide-react";
+import { BarChart3, BookOpenCheck, Boxes, Building2, ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Menu, PackageOpen, ReceiptText, ShoppingCart, Store, Truck, Tv, UsersRound, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import styles from "./AppHeader.module.css";
 
 type Props = { name: string; role: string; branchName: string; isAdmin: boolean };
-const superAdminLinks = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
+  target?: string;
+};
+
+const superAdminLinks: NavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/branches", label: "Branches & Reports", icon: Building2 },
   { href: "/admin/staff", label: "Staff & access", icon: UsersRound },
   { href: "/admin/suppliers", label: "Suppliers & Accounts", icon: Truck },
   { href: "/admin/items", label: "Items, Services & Packages", icon: PackageOpen },
   { href: "/admin/expenses", label: "Expenses", icon: ReceiptText },
+  { href: "/tv", label: "Live TV Floor", icon: Tv, target: "_blank" },
 ];
-const branchAdminLinks = [
+const branchAdminLinks: NavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/pos/bookings", label: "Bookings", icon: BookOpenCheck },
+  { href: "/tv", label: "Live TV Floor", icon: Tv, target: "_blank" },
   { href: "/pos/sales/new", label: "Sales", icon: ShoppingCart },
   { href: "/admin/suppliers", label: "Suppliers & Accounts", icon: Truck },
   { href: "/admin/items", label: "Items, Services & Packages", icon: PackageOpen },
@@ -26,9 +35,10 @@ const branchAdminLinks = [
   { href: "/admin/expenses", label: "Expenses", icon: ReceiptText },
   { href: "/admin/reports", label: "Reports & Analytics", icon: BarChart3 },
 ];
-const cashierLinks = [
+const cashierLinks: NavItem[] = [
   { href: "/pos/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/pos/bookings", label: "Bookings", icon: BookOpenCheck },
+  { href: "/tv", label: "Live TV Floor", icon: Tv, target: "_blank" },
   { href: "/pos/sales/new", label: "Sales", icon: ShoppingCart },
   { href: "/pos/stock", label: "Stock & Wastage", icon: Boxes },
 ];
@@ -81,7 +91,22 @@ export function AppHeader({ name, role, branchName, isAdmin }: Props) {
       <Link className={styles.sidebarBrand} href={overviewHref}><Image src="/Jaskids_Logo.png" alt="JAS Kids POS" width={150} height={49} priority/><span>POS</span></Link>
       <button type="button" className={styles.collapseButton} onClick={() => setCollapsed(current => !current)} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"}>{collapsed ? <ChevronRight size={18} aria-hidden="true"/> : <ChevronLeft size={18} aria-hidden="true"/>}<span>{collapsed ? "Expand" : "Collapse"}</span></button>
       <p className={styles.sectionLabel}>{role === "SUPER_ADMIN" ? "Super Admin" : role === "BRANCH_ADMIN" ? "Branch Admin" : "Cashier"}</p>
-      <nav aria-label={`${role.replaceAll("_", " ").toLowerCase()} navigation`}>{sidebarLinks.map(({ href, label, icon: Icon }) => <Link href={href} key={href} title={collapsed ? label : undefined} aria-label={label} aria-current={active(href) ? "page" : undefined} className={active(href) ? styles.active : undefined}><Icon size={18} aria-hidden="true"/><span>{label}</span></Link>)}</nav>
+      <nav aria-label={`${role.replaceAll("_", " ").toLowerCase()} navigation`}>
+        {sidebarLinks.map(({ href, label, icon: Icon, target }) => (
+          <Link
+            href={href}
+            key={href}
+            target={target}
+            title={collapsed ? label : undefined}
+            aria-label={label}
+            aria-current={active(href) ? "page" : undefined}
+            className={active(href) ? styles.active : undefined}
+          >
+            <Icon size={18} aria-hidden="true"/>
+            <span>{label}</span>
+          </Link>
+        ))}
+      </nav>
       <div className={styles.sidebarFooter}><div className={styles.sidebarBranch}><Store size={16} aria-hidden="true"/><span>{branchName}</span></div><small>JASKIDS · Point of sale</small></div>
     </aside>
   </>;
