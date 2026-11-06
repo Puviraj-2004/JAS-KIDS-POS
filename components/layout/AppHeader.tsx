@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { BarChart3, BookOpenCheck, Boxes, Building2, ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Menu, PackageOpen, ReceiptText, ShoppingCart, Store, Truck, Tv, UsersRound, X } from "lucide-react";
+import { BarChart3, BookOpenCheck, Boxes, Building2, ChevronLeft, ChevronRight, LayoutDashboard, LogOut, type LucideIcon, Menu, PackageOpen, ReceiptText, ShoppingCart, Store, Truck, Tv, UsersRound, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
@@ -11,7 +11,7 @@ type Props = { name: string; role: string; branchName: string; isAdmin: boolean 
 type NavItem = {
   href: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
+  icon: LucideIcon;
   target?: string;
 };
 
