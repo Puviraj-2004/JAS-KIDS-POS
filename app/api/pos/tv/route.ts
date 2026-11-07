@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentStaff } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BookingType, CheckInStatus, Role } from "@prisma/client";
-import { todaySriLanka, sriLankaDateBoundary, formatDateOnly } from "@/lib/date";
+import { todaySriLanka, sriLankaDateBoundary } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
@@ -154,13 +154,10 @@ export async function GET(request: NextRequest) {
       let durationMinutes = 60;
       let slotTimeLabel = "";
 
-      const isOnlineScheduled = booking.booking_type === BookingType.ONLINE_PLAYHOUSE;
-
-      if (isOnlineScheduled && booking.start_time && booking.end_time) {
-        // Scheduled Online Booking: anchored to scheduled start_time and end_time
-        const bookingDateStr = formatDateOnly(booking.booking_date) || today;
-        const slotStart = parseSlotDateTime(bookingDateStr, booking.start_time);
-        const slotEnd = parseSlotDateTime(bookingDateStr, booking.end_time);
+      // For ANY booking (Online or Walk-in) that has start_time and end_time
+      if (booking.start_time && booking.end_time) {
+        const slotStart = parseSlotDateTime(today, booking.start_time);
+        const slotEnd = parseSlotDateTime(today, booking.end_time);
 
         if (slotStart && slotEnd && slotEnd.getTime() > slotStart.getTime()) {
           sessionStartDate = slotStart;
@@ -171,18 +168,11 @@ export async function GET(request: NextRequest) {
           // Fallback if parsing failed
           sessionStartDate = checkin.checked_in_at;
           sessionEndDate = new Date(checkin.checked_in_at.getTime() + durationMinutes * 60000);
-          slotTimeLabel = `${durationMinutes} Mins Pass`;
+          slotTimeLabel = `${durationMinutes} Mins Session`;
         }
       } else {
-        // Walk-in Booking: anchored to actual counter check-in timestamp
-        if (booking.start_time && booking.end_time) {
-          const [sh, sm] = booking.start_time.split(":").map(Number);
-          const [eh, em] = booking.end_time.split(":").map(Number);
-          if (!isNaN(sh) && !isNaN(eh)) {
-            const diff = (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0));
-            if (diff > 0 && diff <= 480) durationMinutes = diff;
-          }
-        } else if (booking.slot_name) {
+        // Fallback when start_time or end_time is not provided
+        if (booking.slot_name) {
           const match = booking.slot_name.match(/(\d+)\s*(min|hr|hour)/i);
           if (match) {
             const val = parseInt(match[1], 10);

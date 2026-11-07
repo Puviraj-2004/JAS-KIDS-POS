@@ -45,6 +45,7 @@ function formatCountdown(startIso: string, endIso: string) {
     const mins = Math.ceil(totalSecs / 60);
 
     const startTimeFormatted = new Date(startIso).toLocaleTimeString("en-US", {
+      timeZone: "Asia/Colombo",
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
@@ -116,6 +117,7 @@ export function LiveTvScreen({ initialBranchId }: { initialBranchId?: string }) 
       const now = new Date();
       setCurrentTime(
         now.toLocaleTimeString("en-US", {
+          timeZone: "Asia/Colombo",
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
@@ -343,6 +345,7 @@ export function LiveTvScreen({ initialBranchId }: { initialBranchId?: string }) 
                   <span>
                     {child.slotTimeLabel ||
                       `Started: ${new Date(child.sessionStart).toLocaleTimeString("en-US", {
+                        timeZone: "Asia/Colombo",
                         hour: "2-digit",
                         minute: "2-digit",
                         hour12: true,
@@ -375,7 +378,10 @@ export function LiveTvScreen({ initialBranchId }: { initialBranchId?: string }) 
       {/* Subtle sync info footer */}
       <footer className={styles.tvFooter}>
         <span>JAS KIDS PLAYHOUSE · POINT OF SALE REAL-TIME FEED</span>
-        <span>Auto-synced: {lastSync.toLocaleTimeString("en-US")} (updates every 8s)</span>
+        <span>
+          Auto-synced:{" "}
+          {lastSync.toLocaleTimeString("en-US", { timeZone: "Asia/Colombo" })} (updates every 8s)
+        </span>
       </footer>
     </div>
   );
