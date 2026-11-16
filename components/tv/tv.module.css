@@ -297,15 +297,23 @@
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  opacity: 0.75;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 12px;
   margin-top: 10px;
 }
 
+.cardFooter > span:last-child {
+  opacity: 0.75;
+  text-align: right;
+}
+
 .referenceTag {
   font-family: ui-monospace, monospace;
-  font-weight: 600;
+  font-size: clamp(16px, 1.45vw, 22px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 /* Status variants */

@@ -27,7 +27,10 @@
 .collapseButton { width: 100%; margin: 0 0 8px; color: var(--pos-text); font-weight: 600; }
 .collapseButton:hover { background: var(--pos-bg); }
 .sectionLabel { margin: 20px 12px 12px; text-transform: uppercase; font-size: 11px; font-weight: 600; letter-spacing: .1em; color: var(--pos-muted); }
-.sidebar nav { display: grid; gap: 4px; }
+.sidebar nav { display: grid; flex: 1 1 auto; min-height: 0; gap: 4px; overflow-y: auto; overscroll-behavior: contain; padding: 0 4px 8px 0; scrollbar-gutter: stable; }
+.sidebar nav::-webkit-scrollbar { width: 8px; }
+.sidebar nav::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: #b8c7c0; background-clip: padding-box; }
+.sidebar nav::-webkit-scrollbar-thumb:hover { background-color: #89a398; }
 .sidebarFooter { margin-top: auto; padding-top: 24px; }
 .sidebarFooter a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; gap: 8px; color: var(--pos-primary); text-decoration: none; border: 1px solid var(--pos-border); border-radius: 6px; }
 .sidebarFooter a span { margin-left: auto; }
@@ -44,7 +47,7 @@
 .collapsed .sidebarBranch svg { margin-top: 0; }
 .logoLink { display: none; }
 @media(max-width: 1200px) { .identity { display: none; } .bar { gap: 16px; } .branch span { max-width: 180px; } }
-@media(max-width: 1023px) { .sidebar, .sidebar.collapsed { display: none; position: static; width: 100%; border-right: 0; border-bottom: 1px solid var(--pos-border); padding: 0 12px 16px; } .sidebar.menuOpen { display: flex; } .sidebarBrand, .sectionLabel, .sidebarFooter small, .collapseButton { display: none; } .sidebar nav { grid-template-columns: repeat(2,minmax(0,1fr)); padding-top: 12px; justify-items: stretch; } .sidebar nav a, .collapsed nav a { width: auto; justify-content: flex-start; padding: 0 12px; } .sidebar nav a span, .collapsed nav a span, .sidebarBranch span, .collapsed .sidebarBranch span { display: inline; } .sidebarFooter { margin-top: 12px; padding-top: 0; display: block; } .sidebarBranch, .collapsed .sidebarBranch { width: auto; justify-content: flex-start; padding: 10px 12px; } .logoLink { display: flex; } .menuButton { display: inline-flex; } }
+@media(max-width: 1023px) { .sidebar, .sidebar.collapsed { display: none; position: static; width: 100%; border-right: 0; border-bottom: 1px solid var(--pos-border); padding: 0 12px 16px; } .sidebar.menuOpen { display: flex; } .sidebarBrand, .sectionLabel, .sidebarFooter small, .collapseButton { display: none; } .sidebar nav { flex: initial; min-height: auto; grid-template-columns: repeat(2,minmax(0,1fr)); overflow: visible; padding: 12px 0 0; justify-items: stretch; } .sidebar nav a, .collapsed nav a { width: auto; justify-content: flex-start; padding: 0 12px; } .sidebar nav a span, .collapsed nav a span, .sidebarBranch span, .collapsed .sidebarBranch span { display: inline; } .sidebarFooter { margin-top: 12px; padding-top: 0; display: block; } .sidebarBranch, .collapsed .sidebarBranch { width: auto; justify-content: flex-start; padding: 10px 12px; } .logoLink { display: flex; } .menuButton { display: inline-flex; } }
 @media(max-width: 850px) { .bar { gap: 8px 12px; padding: 8px 16px; } .account { gap: 8px; } .branch span { max-width: 170px; font-size: 12px; } .logout span { display: none; } .logout { width: 44px; padding: 0; } .adminLink { font-size: 12px; padding: 0 8px; } }
 @media(max-width: 480px) { .logo { width: 76px; } .logoLink > span { display: none; } .bar { padding: 8px 12px; } .nav a { font-size: 12px; gap: 6px; } .branch span { max-width: 125px; } .branch { gap: 4px; } .adminHeader .branch { display: none; } }
 @media print { .header, .sidebar { display: none !important; } }
