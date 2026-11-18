@@ -6,6 +6,7 @@ import { getCurrentStaff } from "@/lib/auth";
 import { sriLankaDateBoundary } from "@/lib/date";
 import { changeStock } from "@/lib/inventory";
 import { prisma } from "@/lib/prisma";
+import { nextSaleReference } from "@/lib/sale-reference";
 import { canCancelSale, parsePaymentMethod, resolveSaleBranch } from "@/lib/sales";
 
 function nonNegative(value: unknown) {
@@ -159,11 +160,11 @@ export async function POST(request: Request) {
   const amountReceived = amountReceivedInput ?? total;
   if (amountReceived < total) return NextResponse.json({ error: "Amount received cannot be less than the total" }, { status: 400 });
   const changeGiven = Math.round((amountReceived - total) * 100) / 100;
-  const saleNo = saleNumber("SALE");
   const receiptNo = saleNumber("POS");
 
   try {
     const sale = await prisma.$transaction(async (transaction) => {
+      const saleNo = await nextSaleReference(transaction);
       const created = await transaction.sale.create({
         data: {
           sale_no: saleNo,
@@ -240,12 +241,13 @@ export async function POST(request: Request) {
         entity_id: created.id,
         new_value: { sale_no: saleNo, receipt_no: receiptNo, subtotal, discount, discount_type, discount_value, total, payment_method: paymentMethod },
       } });
-      return created;
+      return { created, saleNo };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-    return NextResponse.json({ success: true, sale_id: sale.id, sale_no: saleNo, receipt_no: receiptNo }, { status: 201 });
+    return NextResponse.json({ success: true, sale_id: sale.created.id, sale_no: sale.saleNo, receipt_no: receiptNo }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") return NextResponse.json({ error: "Stock changed during checkout. Review the cart and try again." }, { status: 409 });
+    if (error instanceof Error && error.message === "SALE_REFERENCE_LIMIT_REACHED") return NextResponse.json({ error: "Sale reference limit reached. Contact an administrator." }, { status: 409 });
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const duplicate = await prisma.sale.findUnique({ where: { idempotency_key: idempotencyKey }, include: { transaction: { include: { receipt: true } } } });
       if (duplicate && duplicate.branch_id === branch.id) return NextResponse.json({ success: true, sale_id: duplicate.id, receipt_no: duplicate.transaction?.receipt?.receipt_no, duplicate: true });
