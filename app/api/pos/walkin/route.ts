@@ -27,6 +27,25 @@ function code(prefix: string) {
   return `${prefix}-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${randomBytes(3).toString("hex").toUpperCase()}`;
 }
 
+async function nextBookingReference(transaction: Prisma.TransactionClient) {
+  // Serializes reference allocation without a new table or migration.
+  await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('jaskids_pos_booking_reference'))`;
+  const rows = await transaction.$queryRaw<Array<{ reference_no: string }>>`
+    SELECT reference_no
+    FROM bookings
+    WHERE reference_no ~ '^JK[A-Z][0-9]{4}$'
+    ORDER BY reference_no DESC
+    LIMIT 1
+  `;
+  const match = rows[0]?.reference_no.match(/^JK([A-Z])(\d{4})$/);
+  const letter = match?.[1] ?? "A";
+  const number = match ? Number(match[2]) : 0;
+  const nextNumber = number === 9999 ? 1 : number + 1;
+  const nextLetterCode = letter.charCodeAt(0) + (number === 9999 ? 1 : 0);
+  if (nextLetterCode > "Z".charCodeAt(0)) throw new Error("BOOKING_REFERENCE_LIMIT_REACHED");
+  return `JK${String.fromCharCode(nextLetterCode)}${String(nextNumber).padStart(4, "0")}`;
+}
+
 async function requireCounter(request: Request) {
   const staff = await getCurrentStaff(request);
   if (!staff) return { staff: null, response: NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 }) };
@@ -118,13 +137,13 @@ export async function POST(request: Request) {
   if (amountReceived < total) return NextResponse.json({ success: false, error: "Amount received cannot be less than the total" }, { status: 400 });
 
   const change = Math.round((amountReceived - total) * 100) / 100;
-  const referenceNo = code(bookingType === BookingType.WALKIN_BIRTHDAY ? "JWB" : "JWP");
   const receiptNo = code("RCPT");
   const qrHash = code("WALKIN");
   const primaryItem = bookingItems[0];
 
   try {
     const result = await prisma.$transaction(async transaction => {
+      const referenceNo = await nextBookingReference(transaction);
       const booking = await transaction.booking.create({ data: {
         reference_no: referenceNo,
         qr_hash: qrHash,
@@ -197,6 +216,9 @@ export async function POST(request: Request) {
       },
     }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "BOOKING_REFERENCE_LIMIT_REACHED") {
+      return NextResponse.json({ success: false, error: "Booking reference limit reached. Contact an administrator." }, { status: 409 });
+    }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const duplicate = await prisma.booking.findUnique({ where: { idempotency_key: idempotencyKey } });
       if (duplicate?.branch_id === staff.branch_id) return NextResponse.json({ success: true, duplicate: true, booking_id: duplicate.id });
