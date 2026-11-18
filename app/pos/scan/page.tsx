@@ -188,10 +188,10 @@ export default function ScanPage() {
       }
       setCompleted({
         receiptNo: data.receipt_no,
-        referenceNo: booking.reference_no,
+        referenceNo: data.reference_no ?? booking.reference_no,
         bookingType: displayBookingType(booking.booking_type),
         amountCollected: Number(data.amount_collected ?? 0),
-        booking: { ...booking, subtotal: data.subtotal, total_price: data.total_price, discount: data.discount, discount_type: data.discount_type, discount_value: data.discount_value, external_discount: data.external_discount, amount_paid: data.paid_before },
+        booking: { ...booking, reference_no: data.reference_no ?? booking.reference_no, subtotal: data.subtotal, total_price: data.total_price, discount: data.discount, discount_type: data.discount_type, discount_value: data.discount_value, external_discount: data.external_discount, amount_paid: data.paid_before },
         receipt: data.receipt,
         paymentStatus: data.payment_status,
       });
@@ -305,7 +305,7 @@ export default function ScanPage() {
                 <div className={styles.bookingHeader}>
                   <div>
                     <p className={styles.eyebrow}>BOOKING FOUND</p>
-                    <h2 id="booking-preview-title">{booking.reference_no}</h2>
+                    <h2 id="booking-preview-title">Booking details</h2>
                     <p>{booking.branch_name || "JAS Kids branch"}</p>
                   </div>
                   <span className={isWalkInBooking(booking.booking_type) ? styles.walkInBadge : styles.onlineBadge}>

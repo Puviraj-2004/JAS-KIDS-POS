@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentStaff } from "@/lib/auth";
+import { nextBookingReference } from "@/lib/booking-reference";
 import { prisma } from "@/lib/prisma";
 import { extractQrHash } from "@/lib/qr";
 
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
       transaction_id: booking.checkin.transaction?.id ?? null,
       checkin_id: booking.checkin.id,
       booking_type: booking.booking_type,
+      reference_no: booking.reference_no,
       amount_collected: Number(booking.checkin.amount_collected),
       payment_status: booking.checkin.transaction?.payment_status ?? parsePaymentStatus(booking.external_payment_status),
       receipt: {
@@ -136,7 +138,9 @@ export async function POST(request: NextRequest) {
       await transaction.$queryRaw`SELECT id FROM bookings WHERE id = ${booking.id}::uuid FOR UPDATE`;
       const current = await transaction.booking.findUniqueOrThrow({ where: { id: booking.id }, include: { checkin: true } });
       if (current.checkin || current.refreshed_at.getTime() !== booking.refreshed_at.getTime()) throw new Error("BOOKING_CHANGED");
+      const referenceNo = current.external_booking_id ? await nextBookingReference(transaction) : current.reference_no;
       await transaction.booking.update({ where: { id: booking.id }, data: {
+        reference_no: referenceNo,
         discount_type: pricing.discount_type, discount_value: pricing.discount_value, discount: pricing.discount,
         total_price: finalTotal,
       } });
@@ -196,6 +200,7 @@ export async function POST(request: NextRequest) {
           new_value: {
             booking_id: booking.id,
             external_booking_id: booking.external_booking_id,
+            reference_no: referenceNo,
             qr_hash: booking.qr_hash,
             ...pricing,
             amount_collected: amountCollected,
@@ -203,7 +208,7 @@ export async function POST(request: NextRequest) {
           },
         },
       });
-      return { checkin, posTransaction };
+      return { checkin, posTransaction, referenceNo };
     });
 
     return NextResponse.json({
@@ -219,6 +224,7 @@ export async function POST(request: NextRequest) {
       transaction_id: result.posTransaction.id,
       checkin_id: result.checkin.id,
       booking_type: booking.booking_type,
+      reference_no: result.referenceNo,
       amount_collected: amountCollected,
       amount_paid: finalAmountPaid,
       payment_status: paymentStatus,
@@ -233,6 +239,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "BOOKING_CHANGED") return NextResponse.json({ success: false, error: "Booking changed during checkout. Scan again to load the saved booking." }, { status: 409 });
+    if (error instanceof Error && error.message === "BOOKING_REFERENCE_LIMIT_REACHED") return NextResponse.json({ success: false, error: "Booking reference limit reached. Contact an administrator." }, { status: 409 });
     return NextResponse.json(
       { success: false, error: "The POS check-in and receipt could not be saved" },
       { status: 500 },

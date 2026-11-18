@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
         branch_id: branch.id,
         branch_name: branch.name,
         qr_hash: ticket.qr_hash,
-        reference_no: ticket.reference_no,
+        reference_no: savedBooking.reference_no,
         parent_name: ticket.parent_name,
         parent_phone: ticket.parent_phone ?? null,
         baby_name: ticket.baby_name,
