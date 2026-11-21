@@ -141,8 +141,6 @@ export async function GET(request: NextRequest) {
     });
 
     const now = Date.now();
-    const GRACE_PERIOD_MS = 15 * 60 * 1000; // Keep showing for 15 minutes after session expiration
-
     const activeChildren = [];
 
     for (const checkin of checkins) {
@@ -186,8 +184,8 @@ export async function GET(request: NextRequest) {
         slotTimeLabel = `${durationMinutes} Mins Session`;
       }
 
-      // Filter out sessions that expired more than 15 minutes ago
-      if (now > sessionEndDate.getTime() + GRACE_PERIOD_MS) {
+      // Ended sessions should leave the monitor immediately.
+      if (now >= sessionEndDate.getTime()) {
         continue;
       }
 
