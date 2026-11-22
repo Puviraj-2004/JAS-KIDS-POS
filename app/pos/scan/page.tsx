@@ -105,8 +105,21 @@ function durationMinutes(start: string, end: string) {
   return Math.max(0, endHour * 60 + endMinute - (startHour * 60 + startMinute));
 }
 
+function colomboDateInputValue() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Colombo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export default function ScanPage() {
   const [qrHash, setQrHash] = useState("");
+  const [referenceDate, setReferenceDate] = useState("");
+  const [referenceSuffix, setReferenceSuffix] = useState("");
   const [booking, setBooking] = useState<Booking | null>(null);
   const [completed, setCompleted] = useState<CompletedCheckIn | null>(null);
   const [counterPaymentMethod, setCounterPaymentMethod] = useState("CASH");
@@ -117,6 +130,7 @@ export default function ScanPage() {
   const [fetching, setFetching] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const previewRef = useRef<HTMLElement>(null);
+  useEffect(() => { setReferenceDate(colomboDateInputValue()); }, []);
   useEffect(() => {
     if (booking || completed) {
       previewRef.current?.focus({ preventScroll: true });
@@ -158,6 +172,22 @@ export default function ScanPage() {
   function fetchDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void loadBooking(qrHash);
+  }
+
+  function fetchReferenceDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const suffix = referenceSuffix.trim();
+    if (!/^\d{4}$/.test(suffix)) {
+      setError("Enter the final 4 digits from the website booking reference.");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(referenceDate)) {
+      setError("Select the reference date shown in the website booking reference.");
+      return;
+    }
+    const referenceNo = `JKB-${referenceDate.replaceAll("-", "")}-${suffix}`;
+    setQrHash(referenceNo);
+    void loadBooking(referenceNo);
   }
 
   function handleCameraScan(value: string) {
@@ -245,7 +275,7 @@ export default function ScanPage() {
                   <p>Use this if the camera is unavailable or the QR is damaged.</p>
                 </div>
               </div>
-              <label htmlFor="qr-hash" className={styles.label}>Booking QR value</label>
+              <label htmlFor="qr-hash" className={styles.label}>QR code or full website reference</label>
               <div className={styles.inputRow}>
                 <input
                   id="qr-hash"
@@ -255,10 +285,49 @@ export default function ScanPage() {
                   spellCheck={false}
                   value={qrHash}
                   onChange={(event) => setQrHash(event.target.value)}
-                  placeholder="Scan or enter booking code"
+                  placeholder="Scan QR or enter JKB-YYYYMMDD-1234"
                   disabled={fetching || checkingIn}
                 />
                 <button className={styles.lookupButton} type="submit" disabled={fetching || checkingIn || !qrHash.trim()}>
+                  {fetching ? <LoaderCircle className={styles.spinner} size={18} /> : null}
+                  {fetching ? "Checking…" : "Find booking"}
+                </button>
+              </div>
+            </form>
+
+            <form className={styles.referenceLookup} onSubmit={fetchReferenceDetails}>
+              <div>
+                <h3>Find using website reference</h3>
+                <p>Choose the reference date and enter its final 4 digits. This is the date the booking was created, not the play session date.</p>
+              </div>
+              <div className={styles.referenceFields}>
+                <span className={styles.referencePrefix} aria-hidden="true">JKB-</span>
+                <label className={styles.referenceField}>
+                  <span>Reference date</span>
+                  <input
+                    type="date"
+                    value={referenceDate}
+                    onChange={(event) => setReferenceDate(event.target.value)}
+                    disabled={fetching || checkingIn}
+                    required
+                  />
+                </label>
+                <label className={styles.referenceField}>
+                  <span>Last 4 digits</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{4}"
+                    maxLength={4}
+                    value={referenceSuffix}
+                    onChange={(event) => setReferenceSuffix(event.target.value.replace(/\D/g, "").slice(0, 4))}
+                    placeholder="1234"
+                    autoComplete="off"
+                    disabled={fetching || checkingIn}
+                    required
+                  />
+                </label>
+                <button className={styles.lookupButton} type="submit" disabled={fetching || checkingIn || !referenceDate || referenceSuffix.length !== 4}>
                   {fetching ? <LoaderCircle className={styles.spinner} size={18} /> : null}
                   {fetching ? "Checking…" : "Find booking"}
                 </button>
