@@ -1,0 +1,32 @@
+.page {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(145deg, #eef7f2, #f5f6f8 56%, #e4f0eb);
+}
+
+.card {
+  width: min(100%, 440px);
+  padding: 36px;
+  border: 1px solid #cfe0d7;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgb(9 57 37 / 12%);
+}
+
+.badge {
+  display: inline-flex;
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: #006747;
+  background: #e7f4ed;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.card h1 { margin: 18px 0 8px; font-size: clamp(1.7rem, 6vw, 2.3rem); }
+.card p { margin: 0; color: #50645a; line-height: 1.6; }
+.button { display: inline-flex; min-height: 46px; align-items: center; margin-top: 24px; padding: 0 18px; border-radius: 8px; color: #fff; background: #006747; font-weight: 700; text-decoration: none; }
+.button:hover { background: #00543a; }
