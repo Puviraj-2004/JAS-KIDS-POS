@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/Jaskids_Logo.png",
     shortcut: "/Jaskids_Logo.png",
-    apple: "/Jaskids_Logo.png",
+    apple: "/Jaskids_Logo.png?app-icon=2",
   },
   appleWebApp: {
     capable: true,

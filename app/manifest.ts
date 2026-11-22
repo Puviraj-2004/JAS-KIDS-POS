@@ -12,16 +12,10 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#006747",
     icons: [
       {
-        src: "/pwa-icon.svg",
-        sizes: "any",
-        type: "image/svg+xml",
+        src: "/Jaskids_Logo.png?app-icon=2",
+        sizes: "420x136",
+        type: "image/png",
         purpose: "any",
-      },
-      {
-        src: "/pwa-icon.svg",
-        sizes: "any",
-        type: "image/svg+xml",
-        purpose: "maskable",
       },
     ],
   };

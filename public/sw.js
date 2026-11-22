@@ -1,6 +1,6 @@
-const CACHE_NAME = "jaskids-pos-shell-v1";
+const CACHE_NAME = "jaskids-pos-shell-v2";
 const OFFLINE_URL = "/offline";
-const APP_SHELL = [OFFLINE_URL, "/pwa-icon.svg", "/Jaskids_Logo.png"];
+const APP_SHELL = [OFFLINE_URL, "/Jaskids_Logo.png?app-icon=2"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
