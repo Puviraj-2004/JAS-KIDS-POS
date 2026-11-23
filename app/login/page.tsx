@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
@@ -29,7 +30,7 @@ export default function LoginPage() {
     <div className={styles.copy}><p>SECURE STAFF ACCESS</p><h1>Welcome back</h1><span>Sign in with your JASKIDS POS account.</span></div>
     <form onSubmit={handleSubmit}>
       <label htmlFor="email">Email address<input id="email" type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)}/></label>
-      <label htmlFor="password">Password<input id="password" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)}/></label>
+      <label htmlFor="password">Password<PasswordInput id="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)}/></label>
       <button type="submit" disabled={loading}>{loading ? "Signing in…" : "Sign in to POS"}</button>
       {error && <p className={styles.error} role="alert">{error}</p>}
     </form>

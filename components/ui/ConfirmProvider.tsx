@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { PasswordInput } from "./PasswordInput";
 import styles from "./ConfirmProvider.module.css";
 
 type Options = { title: string; description: string; confirmLabel?: string; danger?: boolean; inputLabel?: string; inputType?: "text" | "password"; minLength?: number };
@@ -34,7 +35,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return <Context.Provider value={request}>{children}<dialog ref={dialog} className={styles.dialog} aria-labelledby="confirm-title" aria-describedby="confirm-description" onCancel={event => { event.preventDefault(); finish(null); }}>
     {options && <form onSubmit={event => { event.preventDefault(); finish(options.inputLabel ? value : "confirmed"); }}>
       <h2 id="confirm-title">{options.title}</h2><p id="confirm-description">{options.description}</p>
-      {options.inputLabel && <label>{options.inputLabel}<input type={options.inputType ?? "text"} value={value} onChange={event => setValue(event.target.value)} required minLength={options.minLength ?? 1} autoComplete={options.inputType === "password" ? "new-password" : "off"}/></label>}
+      {options.inputLabel && <label>{options.inputLabel}{options.inputType === "password" ? <PasswordInput value={value} onChange={event => setValue(event.target.value)} required minLength={options.minLength ?? 1} autoComplete="new-password"/> : <input type={options.inputType ?? "text"} value={value} onChange={event => setValue(event.target.value)} required minLength={options.minLength ?? 1} autoComplete="off"/>}</label>}
       <div className={styles.actions}><button type="button" autoFocus onClick={() => finish(null)}>Cancel</button><button type="submit" className={options.danger ? styles.danger : styles.primary}>{options.confirmLabel ?? "Confirm"}</button></div>
     </form>}
   </dialog></Context.Provider>;
