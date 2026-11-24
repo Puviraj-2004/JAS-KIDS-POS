@@ -104,6 +104,7 @@ export async function GET(request: NextRequest) {
       where: {
         branch_id: branch.id,
         status: CheckInStatus.CHECKED_IN,
+        walked_out_at: null,
         checked_in_at: { gte: startOfToday },
         booking: {
           OR: [
@@ -140,7 +141,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const now = Date.now();
     const activeChildren = [];
 
     for (const checkin of checkins) {
@@ -182,11 +182,6 @@ export async function GET(request: NextRequest) {
         sessionStartDate = checkin.checked_in_at;
         sessionEndDate = new Date(checkin.checked_in_at.getTime() + durationMinutes * 60000);
         slotTimeLabel = `${durationMinutes} Mins Session`;
-      }
-
-      // Ended sessions should leave the monitor immediately.
-      if (now >= sessionEndDate.getTime()) {
-        continue;
       }
 
       const childCount = Math.max(1, booking.child_count || 1);

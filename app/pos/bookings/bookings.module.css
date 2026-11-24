@@ -37,10 +37,11 @@
 .tableWrap td strong, .tableWrap td small { display: block; }
 .tableWrap td small { margin-top: 4px; color: var(--pos-muted); }
 .tableWrap td a { color: var(--pos-primary); font-weight: 600; }
-.badge, .complete, .pending { display: inline-flex; border-radius: 8px; padding: 5px 9px; font-size: .72rem; font-weight: 600; }
+.badge, .complete, .pending, .walkedOut { display: inline-flex; border-radius: 8px; padding: 5px 9px; font-size: .72rem; font-weight: 600; }
 .badge { color: #075985; background: #e0f2fe; }
 .complete { color: var(--pos-primary); background: #e8f7f0; }
 .pending { color: #8a4b04; background: #fff5d8; }
+.walkedOut { color: #52677c; background: #edf2f7; }
 .empty { padding: 50px 24px; text-align: center; color: var(--pos-muted); }
 .detail { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(280px,.7fr); gap: 20px; }
 .panel { border: 1px solid var(--pos-border); border-radius: 8px; background: #fff; overflow: hidden; }
@@ -56,8 +57,12 @@
 .summary > div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; }
 .summary span { color: var(--pos-muted); }
 .statusBox { margin: 0 22px 22px; border-radius: 8px; padding: 15px; color: #075b40; background: #ecfdf5; }
+.walkedOutStatus { color: #52677c; background: #edf2f7; }
 .panelActions { padding: 0 22px 22px; }
 .printButton { display: inline-flex; width: 100%; min-height: 47px; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--pos-primary); border-radius: 8px; color: #fff; background: var(--pos-primary); font-weight: 600; cursor: pointer; }
+.walkOutButton { display: inline-flex; width: 100%; min-height: 47px; align-items: center; justify-content: center; gap: 8px; border: 1px solid #b42318; border-radius: 8px; color: #fff; background: #b42318; font-weight: 700; cursor: pointer; }
+.walkOutButton:hover:not(:disabled) { background: #951d14; }
+.walkOutButton:disabled { cursor: not-allowed; opacity: .62; }
 .bookingForm { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; align-items:start; }
 .typePicker { grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 .typePicker button { min-height:96px; border:1px solid var(--pos-border); border-radius:8px; padding:16px; background:#fff; color:var(--pos-text); text-align:left; cursor:pointer; }
@@ -122,7 +127,7 @@
 .completeActions { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; }
 .spinner { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
-.filters *:focus-visible, .top a:focus-visible, .printButton:focus-visible, .headerActions a:focus-visible, .typePicker button:focus-visible, .formGrid input:focus-visible, .formGrid select:focus-visible, .formGrid textarea:focus-visible, .paymentPreview button:focus-visible, .primaryButton:focus-visible, .secondaryButton:focus-visible { outline: 3px solid rgba(0,103,71,.22); outline-offset: 2px; }
+.filters *:focus-visible, .top a:focus-visible, .printButton:focus-visible, .walkOutButton:focus-visible, .headerActions a:focus-visible, .typePicker button:focus-visible, .formGrid input:focus-visible, .formGrid select:focus-visible, .formGrid textarea:focus-visible, .paymentPreview button:focus-visible, .primaryButton:focus-visible, .secondaryButton:focus-visible { outline: 3px solid rgba(0,103,71,.22); outline-offset: 2px; }
 @media (max-width: 900px) { .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .slotGrid { grid-template-columns:1fr 1fr; } .bookingForm { grid-template-columns:1fr; } .paymentPreview { position:static; } .bookingItemRow { grid-template-columns:1fr 90px; } .lineTotal { grid-column:1 / 2; } .iconAction { grid-column:2 / 3; grid-row:2 / 3; } }
 @media (max-width: 780px) { .heading { align-items:flex-start; flex-direction:column; } .filters { grid-template-columns: 1fr 1fr; } .filters input { grid-column: 1 / -1; } .detail { grid-template-columns: 1fr; } }
 @media (max-width: 520px) { .top { align-items: flex-start; } .filters { grid-template-columns: 1fr; } .filters input { grid-column: auto; } .tableCard, .panel { border-radius: 8px; } .grid { grid-template-columns: 1fr; } }

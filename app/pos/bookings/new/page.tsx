@@ -7,7 +7,7 @@ import { ArrowLeft, CalendarDays, CheckCircle2, LoaderCircle, MinusCircle, Packa
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BookingReceipt } from "@/components/pos/Receipt";
-import { todaySriLanka } from "@/lib/date";
+import { dateInputFromTimestamp, todaySriLanka } from "@/lib/date";
 import styles from "../bookings.module.css";
 
 type BookingType = "WALKIN_PLAYHOUSE" | "WALKIN_BIRTHDAY";
@@ -66,6 +66,24 @@ function today() {
   return todaySriLanka();
 }
 
+function timeInputValue(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Colombo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.hour}:${values.minute}`;
+}
+
+function nextWalkInSchedule() {
+  const interval = 5 * 60_000;
+  const start = new Date(Math.ceil(Date.now() / interval) * interval);
+  const end = new Date(start.getTime() + 60 * 60_000);
+  return { bookingDate: dateInputFromTimestamp(start), startTime: timeInputValue(start), endTime: timeInputValue(end) };
+}
+
 export default function NewBookingPage() {
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [bookingType, setBookingType] = useState<BookingType>("WALKIN_PLAYHOUSE");
@@ -88,6 +106,15 @@ export default function NewBookingPage() {
   const [completed, setCompleted] = useState<CompletedBooking | null>(null);
   const [childNames, setChildNames] = useState<string[]>([]);
   const [childModalOpen, setChildModalOpen] = useState(false);
+
+  function applyDefaultSchedule() {
+    const schedule = nextWalkInSchedule();
+    setBookingDate(schedule.bookingDate);
+    setStartTime(schedule.startTime);
+    setEndTime(schedule.endTime);
+  }
+
+  useEffect(() => { applyDefaultSchedule(); }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -209,9 +236,7 @@ export default function NewBookingPage() {
     setCompleted(null);
     setLines([{ rowId: rowId(), productId: "" }]);
     setChildCount("1");
-    setBookingDate(today());
-    setStartTime("");
-    setEndTime("");
+    applyDefaultSchedule();
     setContactName("");
     setContactPhone("");
     setAmountReceived(""); setDiscount("0"); setDiscountType("NONE");
