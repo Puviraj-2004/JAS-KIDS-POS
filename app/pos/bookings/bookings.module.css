@@ -37,11 +37,12 @@
 .tableWrap td strong, .tableWrap td small { display: block; }
 .tableWrap td small { margin-top: 4px; color: var(--pos-muted); }
 .tableWrap td a { color: var(--pos-primary); font-weight: 600; }
-.badge, .complete, .pending, .walkedOut { display: inline-flex; border-radius: 8px; padding: 5px 9px; font-size: .72rem; font-weight: 600; }
+.badge, .complete, .pending, .walkedOut, .endedAwaiting { display: inline-flex; border-radius: 8px; padding: 5px 9px; font-size: .72rem; font-weight: 600; }
 .badge { color: #075985; background: #e0f2fe; }
 .complete { color: var(--pos-primary); background: #e8f7f0; }
 .pending { color: #8a4b04; background: #fff5d8; }
 .walkedOut { color: #52677c; background: #edf2f7; }
+.endedAwaiting { color: #9a3412; background: #ffedd5; }
 .empty { padding: 50px 24px; text-align: center; color: var(--pos-muted); }
 .detail { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(280px,.7fr); gap: 20px; }
 .panel { border: 1px solid var(--pos-border); border-radius: 8px; background: #fff; overflow: hidden; }

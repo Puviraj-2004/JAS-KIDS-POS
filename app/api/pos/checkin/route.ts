@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
   if (requestedPaymentMethod != null && !counterPaymentMethod) {
     return NextResponse.json({ success: false, error: "Invalid counter payment method" }, { status: 400 });
   }
+  const tenderedInput = body?.amount_received;
+  const tendered = tenderedInput === undefined || tenderedInput === null || tenderedInput === "" ? null : Number(tenderedInput);
+  if (tendered !== null && (!Number.isFinite(tendered) || tendered < 0)) return NextResponse.json({ success: false, error: "Invalid amount received" }, { status: 400 });
 
   const booking = await prisma.booking.findUnique({
     where: { qr_hash: qrHash },
@@ -126,6 +129,9 @@ export async function POST(request: NextRequest) {
   }
 
   const amountCollected = amountDue;
+  const amountReceived = paymentMethod === PaymentMethod.CASH && amountDue > 0 ? tendered ?? amountDue : amountDue;
+  if (amountReceived < amountDue) return NextResponse.json({ success: false, error: "Amount received cannot be less than the outstanding amount" }, { status: 400 });
+  const changeGiven = Math.round((amountReceived - amountDue) * 100) / 100;
   const importedAmountPaid = Number(booking.amount_paid_at_import);
   const finalAmountPaid = importedAmountPaid + amountCollected;
   const paymentStatus = amountCollected >= amountDue
@@ -166,8 +172,8 @@ export async function POST(request: NextRequest) {
           discount_type: pricing.discount_type,
           discount_value: pricing.discount_value,
           total: amountCollected,
-          amount_received: amountCollected,
-          change_given: 0,
+          amount_received: amountReceived,
+          change_given: changeGiven,
           payment_method: paymentMethod,
           payment_status: paymentStatus,
           staff_id: staff.id,
@@ -204,6 +210,8 @@ export async function POST(request: NextRequest) {
             qr_hash: booking.qr_hash,
             ...pricing,
             amount_collected: amountCollected,
+            amount_received: amountReceived,
+            change_given: changeGiven,
             payment_method: paymentMethod,
           },
         },
@@ -226,6 +234,8 @@ export async function POST(request: NextRequest) {
       booking_type: booking.booking_type,
       reference_no: result.referenceNo,
       amount_collected: amountCollected,
+      amount_received: amountReceived,
+      change_given: changeGiven,
       amount_paid: finalAmountPaid,
       payment_status: paymentStatus,
       receipt: {

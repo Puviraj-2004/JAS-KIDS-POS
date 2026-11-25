@@ -1,3 +1,2 @@
-import { SalesHistory } from "@/components/pos/SalesHistory";
-
-export default function SalesPage() { return <SalesHistory/>; }
+import { redirect } from "next/navigation";
+export default function SalesPage() { redirect("/pos/sales/history"); }

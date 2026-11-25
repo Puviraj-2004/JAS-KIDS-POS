@@ -59,6 +59,11 @@
   background: var(--pos-primary);
 }
 
+.salesNav { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px; }
+.salesNav a { display:inline-flex; min-height:42px; align-items:center; border:1px solid var(--pos-border); border-radius:8px; padding:0 13px; color:var(--pos-text); background:#fff; text-decoration:none; font-size:13px; font-weight:700; }
+.salesNav a.activeTab { color:#fff; border-color:var(--pos-primary); background:var(--pos-primary); }
+.filterButton { min-height:44px; border:1px solid var(--pos-primary); border-radius:8px; padding:0 15px; color:#fff; background:var(--pos-primary); font:inherit; font-weight:700; cursor:pointer; }
+
 .filterBar {
   display: grid;
   grid-template-columns: minmax(220px, 1.5fr) repeat(4, minmax(150px, .7fr));

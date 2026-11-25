@@ -101,11 +101,12 @@ export function SalesHistory() {
       <header className={styles.title}>
         <div>
           <p>BRANCH SALES</p>
-          <h1>Sales</h1>
+          <h1>Sales Transactions</h1>
           <span>View and manage branch sales transactions.</span>
         </div>
         <Link className={styles.primaryAction} href="/pos/sales/new"><Plus size={18} aria-hidden="true" />New Sale</Link>
       </header>
+      <nav className={styles.salesNav} aria-label="Sales navigation"><Link href="/pos/sales/new">New Sale</Link><Link className={styles.activeTab} href="/pos/sales/history" aria-current="page">Sales Transactions</Link><Link href="/pos/sales/records">Sales Records</Link></nav>
 
       <section className={styles.filterBar} aria-label="Sales filters">
         <label className={styles.search}><Search size={18} aria-hidden="true" /><span className={styles.srOnly}>Search sales</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search sales..." /></label>

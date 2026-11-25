@@ -123,9 +123,12 @@ export default function ScanPage() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [completed, setCompleted] = useState<CompletedCheckIn | null>(null);
   const [counterPaymentMethod, setCounterPaymentMethod] = useState("CASH");
+  const [amountReceived, setAmountReceived] = useState("");
   const [discountType, setDiscountType] = useState<DiscountType>("NONE");
   const [discount, setDiscount] = useState("0");
   const pricing = previewPricing(booking?.amount_due ?? 0, discountType, discount);
+  const received = counterPaymentMethod === "CASH" ? Number(amountReceived || pricing.total) : pricing.total;
+  const change = Math.max(0, Math.round((received - pricing.total) * 100) / 100);
   const [error, setError] = useState("");
   const [fetching, setFetching] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -162,6 +165,7 @@ export default function ScanPage() {
       setBooking(data.booking);
       setDiscountType("NONE"); setDiscount("0");
       setCounterPaymentMethod("CASH");
+      setAmountReceived("");
     } catch {
       setError("Could not reach the booking service. Check the connection and try again.");
     } finally {
@@ -209,6 +213,7 @@ export default function ScanPage() {
           qr_hash: booking.qr_hash,
           discount_type: discountType, discount_value: discount,
           counter_payment_method: counterPaymentMethod,
+          amount_received: counterPaymentMethod === "CASH" ? received : pricing.total,
         }),
       });
       const data = await response.json();
@@ -440,13 +445,14 @@ export default function ScanPage() {
                       id="counter-payment-method"
                       className={styles.select}
                       value={counterPaymentMethod}
-                      onChange={(event) => setCounterPaymentMethod(event.target.value)}
+                      onChange={(event) => { setCounterPaymentMethod(event.target.value); setAmountReceived(""); }}
                       disabled={checkingIn || Boolean(pricing.error)}
                     >
                       <option value="CASH">Cash</option>
                       <option value="CARD">Card</option>
                       <option value="UPI">UPI</option>
                     </select>
+                    {counterPaymentMethod === "CASH" && <><label htmlFor="amount-received" className={styles.label}>Customer gave amount</label><input id="amount-received" className={styles.input} type="number" min={pricing.total} step="0.01" value={amountReceived} onChange={(event) => setAmountReceived(event.target.value)} placeholder={String(pricing.total)} disabled={checkingIn || Boolean(pricing.error)} /><div className={styles.paymentSummary}><div><span>Outstanding amount</span><strong>{currency.format(pricing.total)}</strong></div><div className={styles.amountDue}><span>Return balance</span><strong>{currency.format(change)}</strong></div></div></>}
                   </div>
                 ) : (
                   <div className={styles.paidNotice}>
@@ -455,7 +461,7 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                <button className={styles.confirmButton} type="button" disabled={checkingIn || Boolean(pricing.error)} onClick={confirmCheckIn}>
+                <button className={styles.confirmButton} type="button" disabled={checkingIn || Boolean(pricing.error) || received < pricing.total} onClick={confirmCheckIn}>
                   {checkingIn && <LoaderCircle className={styles.spinner} size={19} />}
                   {checkingIn
                     ? "Completing check-in…"
