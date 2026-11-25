@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { BookingType, Prisma, Role } from "@prisma/client";
 import { getCurrentStaff } from "@/lib/auth";
-import { formatDateOnly, formatSriLankaDate, sriLankaDateBoundary, todaySriLanka } from "@/lib/date";
+import { formatDateOnly, formatSriLankaDate, parseDateOnly, todaySriLanka } from "@/lib/date";
 import { prisma } from "@/lib/prisma";
 import styles from "./bookings.module.css";
 
@@ -56,7 +56,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const customDate = /^\d{4}-\d{2}-\d{2}$/.test(params.date ?? "") ? params.date! : todayKey;
   const fromDate = range === "TOMORROW" ? shiftDate(todayKey, 1) : range === "WEEK" ? weekStart(todayKey) : range === "CUSTOM" ? customDate : todayKey;
   const toDate = range === "WEEK" ? shiftDate(fromDate, 6) : fromDate;
-  const dateFilter = range === "ALL" ? {} : { booking_date: { gte: sriLankaDateBoundary(fromDate, false), lte: sriLankaDateBoundary(toDate, true) } };
+  const dateFilter = range === "ALL" ? {} : { booking_date: { gte: parseDateOnly(fromDate), lte: parseDateOnly(toDate) } };
   const where: Prisma.BookingWhereInput = {
     ...(selectedBranchId ? { branch_id: selectedBranchId } : {}),
     ...(bookingType ? { booking_type: bookingType } : {}),
