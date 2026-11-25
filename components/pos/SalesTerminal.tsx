@@ -2,7 +2,7 @@
 import { DiscountFields } from "@/components/pos/DiscountFields";
 import { previewPricing, discountLabel, lineAmount, sumAmounts, type DiscountType } from "@/lib/pricing";
 
-import { ArrowLeft, ArrowRight, ClipboardList, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -82,7 +82,7 @@ export function SalesTerminal() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Sale could not be completed"); setSubmitting(false); }
   }
   return <main className={styles.page}><div className={styles.shell}>
-    <header className={styles.title}><div><p>COUNTER</p><h1>New sale</h1><span>Select products, review the cart, then collect payment.</span></div><div className={styles.titleActions}><Link href="/pos/sales/history"><ClipboardList size={17} aria-hidden="true" />Sales Transactions</Link>{data && data.branches.length > 1 && <label>Sales branch<select value={branchId} disabled={loading || submitting} onChange={event => void changeBranch(event.target.value)}>{data.branches.map(branch => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label>}</div></header>
+    <header className={styles.title}><div><p>COUNTER</p><h1>New sale</h1><span>Select products, review the cart, then collect payment.</span></div>{data && data.branches.length > 1 && <div className={styles.titleActions}><label>Sales branch<select value={branchId} disabled={loading || submitting} onChange={event => void changeBranch(event.target.value)}>{data.branches.map(branch => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label></div>}</header>
     <nav className={styles.salesNav} aria-label="Sales navigation"><Link className={styles.activeTab} href="/pos/sales/new" aria-current="page">New Sale</Link><Link href="/pos/sales/history">Sales Transactions</Link><Link href="/pos/sales/records">Sales Records</Link></nav>
     {error && !mobileCart && <p className={styles.error} role="alert">{error} {!data && <button onClick={() => void load(branchId)}>Retry</button>}</p>}
     <div className={styles.terminal + (mobileCart ? " " + styles.reviewing : "")}>
