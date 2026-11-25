@@ -10,7 +10,9 @@
 .headerActions { display:flex; flex-wrap:wrap; gap:10px; }
 .headerActions a, .primaryButton, .secondaryButton { display:inline-flex; min-height:44px; align-items:center; justify-content:center; gap:8px; border-radius:8px; padding:0 14px; border:1px solid var(--pos-border); color:var(--pos-text); background:#fff; text-decoration:none; font-weight:700; cursor:pointer; }
 .headerActions a.primary { color:#fff!important; border-color:var(--pos-primary); background:var(--pos-primary); box-shadow:0 8px 18px rgba(0,103,71,.14); }
-.filters { display: grid; grid-template-columns: minmax(180px,1fr) repeat(5, minmax(130px, auto)); gap: 10px; margin-bottom: 18px; border: 1px solid var(--pos-border); border-radius: 8px; padding: 12px; background: #fff; }
+.filters { display: grid; grid-template-columns: minmax(180px,1fr) repeat(4, minmax(130px, auto)); gap: 10px; margin-bottom: 18px; border: 1px solid var(--pos-border); border-radius: 8px; padding: 12px; background: #fff; }
+.filters label { display:grid; gap:4px; color:var(--pos-muted); font-size:.7rem; font-weight:700; }
+.filters label input { min-width:0; }
 .filters input, .filters select, .filters button { min-height: 44px; border: 1px solid #c4d3cc; border-radius: 8px; padding: 0 12px; background: #fff; }
 .filters button { color: #fff; background: var(--pos-primary); border-color: var(--pos-primary); font-weight: 600; cursor: pointer; }
 .metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
